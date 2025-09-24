@@ -128,7 +128,6 @@ async function sendLeaderboard() {
     .setDescription(
       `${top3}\n\n${next7 || ""}\n\nThe leaderboard will now reset!`
     )
-    .setImage("https://media.discordapp.net/attachments/1420424697501192293/1420428275381178368/3c907b8f-7bc7-48d6-8f40-773308e211da.png?ex=68d55c6b&is=68d40aeb&hm=ceda1d988eaee48ee6c3c94059827cb8c5fcf1f94bf2e3eb4b17233b6fb4e00e&=&format=webp&quality=lossless&width=908&height=605")
     .setFooter({
       text: `Leaderboard | ${new Date().toLocaleDateString("en-GB")} ${new Date().toLocaleTimeString(
         "en-GB",
