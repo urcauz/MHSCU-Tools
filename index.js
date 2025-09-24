@@ -190,8 +190,11 @@ client.on("messageCreate", async (msg) => {
       await suggestionMsg.react("<:GreenArrow:1420438634368077894>");
       await suggestionMsg.react("<:RedArrow:1420438637824311456>");
 
-      msg.reply(`✅ Your suggestion has been sent to ${suggestionsChannel}!`);
+      await msg.react("✅"); // reacts to user's command as confirmation
+      await msg.delete().catch(() => {});
 
+
+      
       try {
         await msg.delete();
       } catch {
