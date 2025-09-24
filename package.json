@@ -1,0 +1,10 @@
+{
+  "name": "leaderboard-bot",
+  "type": "module",
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "node-cron": "^4.2.1"
+  }
+}
