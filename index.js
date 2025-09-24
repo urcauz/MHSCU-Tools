@@ -161,50 +161,38 @@ client.on("messageCreate", async (msg) => {
   }
 
   if (command === "suggestion") {
-    const suggestionText = args.join(" ");
-    if (!suggestionText) {
-      msg.reply("❌ Please provide a suggestion! Usage: `!suggestion Your suggestion here`");
-      return;
-    }
+  const suggestionText = args.join(" ");
+  if (!suggestionText) return; // ignore empty suggestions
 
-    try {
-      const suggestionsChannel = await client.channels.fetch(SUGGESTIONS_CHANNEL_ID);
-      if (!suggestionsChannel) {
-        msg.reply("❌ Suggestions channel not found! Please contact an administrator.");
-        return;
-      }
+  try {
+    const suggestionsChannel = await client.channels.fetch(SUGGESTIONS_CHANNEL_ID);
+    if (!suggestionsChannel) return;
 
-      const embed = new EmbedBuilder()
-        .setTitle("💡 New Suggestion")
-        .setDescription(suggestionText)
-        .setColor("Yellow")
-        .setAuthor({
-          name: msg.author.displayName || msg.author.username,
-          iconURL: msg.author.displayAvatarURL(),
-        })
-        .setTimestamp()
-        .setFooter({ text: `User ID: ${msg.author.id}` });
+    const embed = new EmbedBuilder()
+      .setTitle("💡 New Suggestion")
+      .setDescription(suggestionText)
+      .setColor("Yellow")
+      .setAuthor({
+        name: msg.author.displayName || msg.author.username,
+        iconURL: msg.author.displayAvatarURL(),
+      })
+      .setTimestamp()
+      .setFooter({ text: `User ID: ${msg.author.id}` });
 
-      const suggestionMsg = await suggestionsChannel.send({ embeds: [embed] });
+    const suggestionMsg = await suggestionsChannel.send({ embeds: [embed] });
 
-      await suggestionMsg.react("<:GreenArrow:1420438634368077894>");
-      await suggestionMsg.react("<:RedArrow:1420438637824311456>");
+    await suggestionMsg.react("<:GreenArrow:1420438634368077894>");
+    await suggestionMsg.react("<:RedArrow:1420438637824311456>");
 
-      await msg.react("✅"); // reacts to user's command as confirmation
-      await msg.delete().catch(() => {});
+    // ✅ react to user's command as confirmation
+    await msg.react("✅");
 
-
-      
-      try {
-        await msg.delete();
-      } catch {
-        console.log("⚠️ Couldn't delete command message (missing permissions)");
-      }
-    } catch (error) {
-      console.error("❌ Error creating suggestion:", error);
-    }
+    // Delete the original command message
+    await msg.delete().catch(() => {});
+  } catch (error) {
+    console.error("❌ Error creating suggestion:", error);
   }
-});
+}
 
 // Cron job: every Sunday 00:00
 cron.schedule("0 0 * * 0", () => {
