@@ -176,6 +176,12 @@ client.on("messageCreate", async (msg) => {
   const command = args.shift().toLowerCase();
 
   if (command === "testlb") {
+    // Check if user has administrator permissions
+    if (!msg.member.permissions.has("Administrator")) {
+      msg.reply("❌ Only administrators can use this command!");
+      return;
+    }
+    
     await sendLeaderboard();
     msg.reply("✅ Test leaderboard sent!");
   }
