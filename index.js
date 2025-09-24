@@ -17,9 +17,9 @@ const client = new Client({
 });
 
 const PREFIX = "!";
-const CHANNEL_ID = "1420421192032194663"; // leaderboard channel ID
-const SUGGESTIONS_CHANNEL_ID = "1408921872673935361"; // suggestions channel ID
-const WINNER_ROLE_ID = "1420435350949728296"; // role for 1st place winner
+const CHANNEL_ID = process.env.LEADERBOARD_CHANNEL_ID || "1399398636797825046"; // leaderboard channel ID
+const SUGGESTIONS_CHANNEL_ID = process.env.SUGGESTIONS_CHANNEL_ID || "YOUR_SUGGESTIONS_CHANNEL_ID_HERE"; // suggestions channel ID
+const WINNER_ROLE_ID = process.env.WINNER_ROLE_ID || "1420435350949728296"; // role for 1st place winner
 const DATA_FILE = "./leaderboard.json";
 
 // Load or create leaderboard data
