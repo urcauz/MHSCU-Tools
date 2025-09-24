@@ -22,7 +22,7 @@ const SUGGESTIONS_CHANNEL_ID = process.env.SUGGESTIONS_CHANNEL_ID;
 const WINNER_ROLE_ID = process.env.WINNER_ROLE_ID;
 const DATA_FILE = "./leaderboard.json";
 
-// Load leaderboard
+// -------------------- Leaderboard Data --------------------
 let leaderboard = {};
 if (fs.existsSync(DATA_FILE)) {
   try {
@@ -33,13 +33,11 @@ if (fs.existsSync(DATA_FILE)) {
     leaderboard = {};
   }
 }
-
-// Save function
 function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(leaderboard, null, 2));
 }
 
-// Count messages
+// -------------------- Count Messages --------------------
 client.on("messageCreate", (msg) => {
   if (msg.author.bot) return;
   if (!leaderboard[msg.author.id]) leaderboard[msg.author.id] = 0;
@@ -47,7 +45,7 @@ client.on("messageCreate", (msg) => {
   saveData();
 });
 
-// Role management
+// -------------------- Role Management --------------------
 async function removeWinnerRole(guild) {
   try {
     const role = await guild.roles.fetch(WINNER_ROLE_ID);
@@ -76,7 +74,7 @@ async function giveWinnerRole(guild, winnerId) {
   }
 }
 
-// Leaderboard
+// -------------------- Leaderboard Function --------------------
 async function sendLeaderboard() {
   const channel = await client.channels.fetch(CHANNEL_ID);
   if (!channel) return;
@@ -114,38 +112,49 @@ async function sendLeaderboard() {
     .setTitle("🏆 Weekly Leaderboard Winners")
     .setColor("Blue")
     .setDescription(`${top3}\n\n${next7 || ""}\n\nThe leaderboard will now reset!`)
-    .setImage("https://media.discordapp.net/attachments/1420424697501192293/1420428275381178368/3c907b8f-7bc7-48d6-8f40-773308e211da.png?ex=68d55c6b&is=68d40aeb&hm=ceda1d988eaee48ee6c3c94059827cb8c5fcf1f94bf2e3eb4b17233b6fb4e00e&=&format=webp&quality=lossless&width=908&height=605")
+    .setImage(
+      "https://media.discordapp.net/attachments/1420424697501192293/1420428275381178368/3c907b8f-7bc7-48d6-8f40-773308e211da.png?ex=68d55c6b&is=68d40aeb&hm=ceda1d988eaee48ee6c3c94059827cb8c5fcf1f94bf2e3eb4b17233b6fb4e00e&=&format=webp&quality=lossless&width=908&height=605"
+    )
     .setFooter({
-      text: `Leaderboard | ${new Date().toLocaleDateString("en-GB")} ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`,
+      text: `Leaderboard | ${new Date().toLocaleDateString(
+        "en-GB"
+      )} ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`,
     });
 
-  // Send single message with mentions + embed
+  // Send a single message with mentions + embed
   await channel.send({
     content: mentionMessage,
     embeds: [embed],
     allowedMentions: { parse: ["users"] },
   });
 
-  // Give #1 winner role
   if (sorted.length > 0) await giveWinnerRole(guild, sorted[0][0]);
 
-  // Reset leaderboard
   leaderboard = {};
   saveData();
 }
 
-// Commands
-client.on("messageCreate", async (msg) => {
-  if (!msg.content.startsWith(PREFIX) || msg.author.bot) return;
+// -------------------- Single Message Listener --------------------
+if (!client.listeners("messageCreate").some((l) => l.name === "handleMessage")) {
+  client.on("messageCreate", handleMessage);
+}
 
+async function handleMessage(msg) {
+  if (msg.author.bot) return;
+
+  // -------------------- Commands --------------------
+  if (!msg.content.startsWith(PREFIX)) return;
   const args = msg.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
+  // --- Test Leaderboard ---
   if (command === "testlb") {
     if (!msg.member.permissions.has("Administrator")) return;
     await sendLeaderboard();
+    await msg.react("✅").catch(() => {});
   }
 
+  // --- Suggestion ---
   if (command === "suggestion") {
     const suggestionText = args.join(" ");
     if (!suggestionText) return;
@@ -175,17 +184,17 @@ client.on("messageCreate", async (msg) => {
       console.error("❌ Error creating suggestion:", err);
     }
   }
-});
+}
 
-// Cron job every Sunday at 00:00
+// -------------------- Cron Job --------------------
 cron.schedule("0 0 * * 0", () => sendLeaderboard());
 
-// Express uptime server
+// -------------------- Express Server --------------------
 const app = express();
 app.get("/", (req, res) => res.send("Bot is alive!"));
 app.listen(process.env.PORT || 3000, () => console.log("Uptime server running"));
 
-// Client ready
+// -------------------- Ready Event --------------------
 client.once("clientReady", () => console.log(`✅ Logged in as ${client.user.tag}`));
 
 client.login(process.env.TOKEN);
