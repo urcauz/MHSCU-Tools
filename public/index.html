@@ -113,7 +113,19 @@
 
 <script>
 const API_BASE = 'https://mhscu-tools.onrender.com/';
+const API_BASE = 'https://mhscu-tools.onrender.com/api';
 
+async function fetchStatus() {
+  try {
+    const response = await fetch(`${API_BASE}/status`);
+    const data = await response.json(); // ✅ This is JSON
+    console.log(data);
+  } catch (err) {
+    console.error('Error fetching status:', err);
+  }
+}
+
+fetchStatus();
 let DASHBOARD_PASSWORD = localStorage.getItem("dashboardPassword");
 let users = [], logs = [];
 
