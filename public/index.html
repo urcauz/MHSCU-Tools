@@ -5,23 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MHSCU Community Dashboard</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f0f2f5; color: #111; transition: background 0.3s, color 0.3s; }
-  body.dark { background: #18191c; color: #e4e6eb; }
-  header { padding: 20px; background: #5865f2; color: white; display: flex; justify-content: space-between; align-items: center; }
-  .dark header { background: #333; }
-  .container { padding: 20px; max-width: 1200px; margin: auto; }
-  h2 { margin-top: 40px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ccc; }
-  .dark th, .dark td { border-color: #555; }
-  button { margin: 2px; padding: 5px 10px; cursor: pointer; }
-  .status { font-weight: bold; }
-  .login-container { display: flex; flex-direction: column; max-width: 300px; margin: 100px auto; }
-  .login-container input { margin-bottom: 10px; padding: 8px; }
-  .badge { padding: 2px 6px; border-radius: 4px; color: white; font-size: 0.8em; }
-  .role-admin { background: #f04747; }
-  .role-moderator { background: #faa81a; }
-  .role-member { background: #43b581; }
+  body { font-family: Arial; margin:0; padding:0; background:#f0f2f5; color:#111; transition:0.3s; }
+  body.dark { background:#18191c; color:#e4e6eb; }
+  header { padding:20px; background:#5865f2; color:white; display:flex; justify-content:space-between; align-items:center; }
+  .dark header { background:#333; }
+  .container { padding:20px; max-width:1200px; margin:auto; }
+  h2 { margin-top:40px; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; }
+  th, td { padding:8px; text-align:left; border-bottom:1px solid #ccc; }
+  .dark th, .dark td { border-color:#555; }
+  button { margin:2px; padding:5px 10px; cursor:pointer; }
+  .status { font-weight:bold; }
+  .login-container { display:flex; flex-direction:column; max-width:300px; margin:100px auto; }
+  .login-container input { margin-bottom:10px; padding:8px; }
+  .role-badge { padding:2px 6px; border-radius:4px; color:white; font-size:0.8em; }
+  .role-admin { background:#f04747; }
+  .role-moderator { background:#faa81a; }
+  .role-member { background:#43b581; }
+  .online-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; }
+  .online { background:#43b581; }
+  .offline { background:#747f8d; }
+  #topContributors td { font-weight:bold; }
+  canvas { max-width:100%; margin-top:20px; }
 </style>
 </head>
 <body>
@@ -34,14 +39,31 @@
 </header>
 
 <div class="container" id="dashboard" style="display:none;">
-  
-  <h2>Server Stats</h2>
-  <div id="stats">
-    <p>Total Members: <span id="totalMembers">0</span></p>
-    <p>Muted Users: <span id="mutedUsers">0</span></p>
-    <p>Bot Online: <span id="botOnline">❌</span></p>
-  </div>
 
+  <!-- Server Stats -->
+  <h2>Server Stats</h2>
+  <p>Total Members: <span id="totalMembers">0</span></p>
+  <p>Muted Users: <span id="mutedUsers">0</span></p>
+  <p>Bot Online: <span id="botOnline">❌</span></p>
+
+  <!-- Users Section -->
+  <h2>Users</h2>
+  <input type="text" id="searchUser" placeholder="Search username..." style="margin-bottom:10px;padding:5px;width:300px;">
+  <table id="usersTable">
+    <thead>
+      <tr><th>User</th><th>Role</th><th>Status</th><th>Messages</th><th>Actions</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Top Contributors -->
+  <h2>Top Contributors</h2>
+  <table id="topContributors">
+    <thead><tr><th>User</th><th>Messages</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Leaderboard / Engagement -->
   <h2>Leaderboard / Engagement</h2>
   <table id="leaderboardTable">
     <thead>
@@ -51,6 +73,7 @@
   </table>
   <button id="resetLeaderboardBtn">Reset Leaderboard</button>
 
+  <!-- Moderation Logs -->
   <h2>Moderation Logs</h2>
   <table id="logsTable">
     <thead>
@@ -59,23 +82,21 @@
     <tbody></tbody>
   </table>
 
+  <!-- Announcements Panel -->
   <h2>Announcements</h2>
-  <textarea id="announcementText" rows="3" style="width:100%;"></textarea>
+  <textarea id="announcementText" rows="3" placeholder="Enter announcement..."></textarea>
   <select id="announcementChannel">
-    <option value="leaderboard">Leaderboard</option>
+    <option value="general">General</option>
     <option value="suggestions">Suggestions</option>
     <option value="logs">Logs</option>
   </select>
   <button id="sendAnnouncementBtn">Send Announcement</button>
+  <ul id="announcementHistory"></ul>
 
-  <h2>Users</h2>
-  <input type="text" id="searchUser" placeholder="Search username or ID..." style="margin-bottom:10px;padding:5px;width:300px;">
-  <table id="usersTable">
-    <thead>
-      <tr><th>User</th><th>Messages</th><th>Actions</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <!-- Activity Chart -->
+  <h2>Activity Chart (Messages Over Time)</h2>
+  <canvas id="activityChart"></canvas>
+
 </div>
 
 <div class="login-container" id="loginContainer">
@@ -85,176 +106,192 @@
   <p id="loginError" style="color:red;"></p>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const API_BASE = 'https://mhscu-tools.onrender.com';
-const DASHBOARD_PASSWORD = "cauz123@.";
+// dark mode
+document.getElementById('themeToggle').addEventListener('click', ()=>document.body.classList.toggle('dark'));
 
+// localStorage login
+const PASSWORD = 'cauz123@.';
 const loginContainer = document.getElementById('loginContainer');
 const dashboard = document.getElementById('dashboard');
 
-const statusIndicator = document.getElementById('statusIndicator');
-const totalMembersEl = document.getElementById('totalMembers');
-const mutedUsersEl = document.getElementById('mutedUsers');
-const botOnlineEl = document.getElementById('botOnline');
+// Mock Data
+const members = [
+  {id:1, username:'Alice', role:'admin', messages:120, online:true},
+  {id:2, username:'Bob', role:'moderator', messages:95, online:true},
+  {id:3, username:'Charlie', role:'member', messages:60, online:false},
+  {id:4, username:'David', role:'member', messages:30, online:true},
+  {id:5, username:'Eve', role:'member', messages:10, online:false},
+];
 
-const leaderboardTableBody = document.querySelector('#leaderboardTable tbody');
-const logsTableBody = document.querySelector('#logsTable tbody');
-const usersTableBody = document.querySelector('#usersTable tbody');
+let leaderboardData = members.map(m => ({username:m.username, messages:m.messages}));
+let logs = [
+  {time:Date.now()-3600000, action:'Mute', user:'Charlie', moderator:'Bob', reason:'Spamming'},
+  {time:Date.now()-7200000, action:'Kick', user:'Eve', moderator:'Alice', reason:'Rule violation'}
+];
+let announcements = [];
 
-const themeToggle = document.getElementById('themeToggle');
-themeToggle.addEventListener('click', () => {
-  document.body.classList.toggle('dark');
-});
-
-function setStatus(online) {
-  statusIndicator.textContent = online ? '✅ Online' : '❌ Offline';
-  botOnlineEl.textContent = online ? '✅' : '❌';
-}
-const res = await fetch(`${API_BASE}/api/members`);
-const members = await res.json();
-
-async function fetchStats() {
-  try {
-    const res = await fetch(`${API_BASE}/api/status`);
-    const data = await res.json();
-    totalMembersEl.textContent = data.users || 0;
-    mutedUsersEl.textContent = data.mutedUsers || 0;
-    setStatus(data.online);
-  } catch (err) {
-    console.error(err);
-    setStatus(false);
-  }
+// Functions
+function showDashboard(){
+  loginContainer.style.display='none';
+  dashboard.style.display='block';
+  loadStats();
+  loadUsers();
+  loadLeaderboard();
+  loadTopContributors();
+  loadLogs();
+  loadAnnouncements();
+  loadActivityChart();
 }
 
-async function fetchLeaderboard() {
-  try {
-    const res = await fetch(`${API_BASE}/api/leaderboard`);
-    const data = await res.json();
-    leaderboardTableBody.innerHTML = '';
-    usersTableBody.innerHTML = '';
-    const sorted = Object.entries(data).sort((a,b) => b[1]-a[1]);
-    sorted.forEach(([id, count], i) => {
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>${i+1}</td><td>${id}</td><td>${count}</td>`;
-      leaderboardTableBody.appendChild(row);
-
-      const userRow = document.createElement('tr');
-      userRow.innerHTML = `<td>${id}</td><td>${count}</td>
-        <td>
-          <button onclick="moderate('${id}','mute')">Mute</button>
-          <button onclick="moderate('${id}','unmute')">Unmute</button>
-          <button onclick="moderate('${id}','kick')">Kick</button>
-          <button onclick="moderate('${id}','ban')">Ban</button>
-          <button onclick="moderate('${id}','timeout')">Timeout</button>
-        </td>`;
-      usersTableBody.appendChild(userRow);
-    });
-  } catch (err) {
-    console.error(err);
-  }
+// Server Stats
+function loadStats(){
+  document.getElementById('totalMembers').textContent = members.length;
+  document.getElementById('mutedUsers').textContent = logs.filter(l=>l.action==='Mute').length;
+  document.getElementById('botOnline').textContent = '✅';
 }
 
-async function fetchLogs() {
-  try {
-    const res = await fetch(`${API_BASE}/api/logs`);
-    const data = await res.json();
-    logsTableBody.innerHTML = '';
-    data.forEach(log => {
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>${new Date(log.time).toLocaleString()}</td>
-        <td>${log.action || 'Action'}</td>
-        <td>${log.user || '-'}</td>
-        <td>${log.moderator || '-'}</td>
-        <td>${log.reason || '-'}</td>`;
-      logsTableBody.appendChild(row);
-    });
-  } catch(err){console.error(err);}
-}
-
-async function moderate(userId, action) {
-  const reason = prompt("Enter reason (optional)");
-  const duration = action === 'timeout' ? prompt("Timeout duration in minutes", "10") : null;
-
-  try {
-    const res = await fetch(`${API_BASE}/api/${action}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + DASHBOARD_PASSWORD },
-      body: JSON.stringify({ userId, reason, duration })
-    });
-    const data = await res.json();
-    alert(data.success ? `${action} successful` : `Failed: ${data.error}`);
-    fetchLeaderboard();
-    fetchLogs();
-  } catch(err){console.error(err);}
-}
-
-// Announcement
-document.getElementById('sendAnnouncementBtn').addEventListener('click', async ()=>{
-  const message = document.getElementById('announcementText').value;
-  const channel = document.getElementById('announcementChannel').value;
-  try {
-    const res = await fetch(`${API_BASE}/api/announcement`, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Authorization': 'Bearer '+DASHBOARD_PASSWORD },
-      body: JSON.stringify({ channel, message })
-    });
-    const data = await res.json();
-    alert(data.success ? "Announcement sent!" : `Failed: ${data.error}`);
-  } catch(err){console.error(err);}
-});
-
-// Reset leaderboard
-document.getElementById('resetLeaderboardBtn').addEventListener('click', async ()=>{
-  if(!confirm("Reset leaderboard?")) return;
-  try {
-    const res = await fetch(`${API_BASE}/api/reset-leaderboard`, {
-      method:'POST',
-      headers:{ 'Authorization': 'Bearer '+DASHBOARD_PASSWORD }
-    });
-    const data = await res.json();
-    alert(data.success ? "Leaderboard reset!" : `Failed: ${data.error}`);
-    fetchLeaderboard();
-  } catch(err){console.error(err);}
-});
-
-// Login handling
-function showDashboard() {
-  loginContainer.style.display = 'none';
-  dashboard.style.display = 'block';
-  fetchStats();
-  fetchLeaderboard();
-  fetchLogs();
-}
-
-if(DASHBOARD_PASSWORD){
-  showDashboard();
-} else {
-  document.getElementById('loginBtn').addEventListener('click', ()=>{
-    const pass = document.getElementById('dashboardPassword').value;
-    if(pass === 'admin123'){ // match your server .env
-      localStorage.setItem('dashboardPassword', pass);
-      location.reload();
-    } else {
-      document.getElementById('loginError').textContent = 'Incorrect password';
-    }
+// Users Table
+function loadUsers(){
+  const tbody = document.querySelector('#usersTable tbody');
+  tbody.innerHTML='';
+  members.forEach(m=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${m.username}</td>
+                    <td><span class="role-badge role-${m.role}">${m.role}</span></td>
+                    <td><span class="online-dot ${m.online?'online':'offline'}"></span>${m.online?'Online':'Offline'}</td>
+                    <td>${m.messages}</td>
+                    <td>
+                      <button onclick="alert('Mute ${m.username}')">Mute</button>
+                      <button onclick="alert('Kick ${m.username}')">Kick</button>
+                      <button onclick="alert('Ban ${m.username}')">Ban</button>
+                    </td>`;
+    tbody.appendChild(tr);
   });
 }
+
+// Top Contributors
+function loadTopContributors(){
+  const tbody = document.querySelector('#topContributors tbody');
+  tbody.innerHTML='';
+  const sorted = [...members].sort((a,b)=>b.messages-a.messages).slice(0,3);
+  sorted.forEach(u=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${u.username}</td><td>${u.messages}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Leaderboard
+function loadLeaderboard(){
+  const tbody = document.querySelector('#leaderboardTable tbody');
+  tbody.innerHTML='';
+  const sorted = [...leaderboardData].sort((a,b)=>b.messages-a.messages);
+  sorted.forEach((u,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td>${u.username}</td><td>${u.messages}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Reset Leaderboard
+document.getElementById('resetLeaderboardBtn').addEventListener('click', ()=>{
+  if(!confirm("Reset leaderboard?")) return;
+  leaderboardData.forEach(u=>u.messages=0);
+  loadLeaderboard();
+  loadTopContributors();
+  alert('Leaderboard reset!');
+});
+
+// Moderation Logs
+function loadLogs(){
+  const tbody = document.querySelector('#logsTable tbody');
+  tbody.innerHTML='';
+  logs.forEach(l=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${new Date(l.time).toLocaleString()}</td>
+                    <td>${l.action}</td>
+                    <td>${l.user}</td>
+                    <td>${l.moderator}</td>
+                    <td>${l.reason}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Announcements
+function loadAnnouncements(){
+  const ul = document.getElementById('announcementHistory');
+  ul.innerHTML='';
+  announcements.forEach(a=>{
+    const li = document.createElement('li');
+    li.textContent = `[${new Date(a.time).toLocaleString()}][${a.channel}] ${a.message}`;
+    ul.appendChild(li);
+  });
+}
+
+document.getElementById('sendAnnouncementBtn').addEventListener('click', ()=>{
+  const message = document.getElementById('announcementText').value.trim();
+  const channel = document.getElementById('announcementChannel').value;
+  if(!message) return alert('Enter a message');
+  announcements.push({time:Date.now(), channel, message});
+  loadAnnouncements();
+  document.getElementById('announcementText').value='';
+  alert('Announcement sent!');
+});
 
 // Search filter
 document.getElementById('searchUser').addEventListener('input', e=>{
   const term = e.target.value.toLowerCase();
-  usersTableBody.querySelectorAll('tr').forEach(row=>{
-    row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none';
+  document.querySelectorAll('#usersTable tbody tr').forEach(tr=>{
+    tr.style.display = tr.innerText.toLowerCase().includes(term)?'':'none';
   });
 });
 
-// Refresh data every 10 seconds
-setInterval(()=>{
-  fetchStats();
-  fetchLeaderboard();
-  fetchLogs();
-}, 10000);
+// Login
+if(localStorage.getItem('dashboardPassword')===PASSWORD){
+  showDashboard();
+} else {
+  document.getElementById('loginBtn').addEventListener('click', ()=>{
+    const pass = document.getElementById('dashboardPassword').value;
+    if(pass===PASSWORD){
+      localStorage.setItem('dashboardPassword', pass);
+      showDashboard();
+    } else {
+      document.getElementById('loginError').textContent='Incorrect password';
+    }
+  });
+}
 
+// Activity Chart
+let chart;
+function loadActivityChart(){
+  const ctx = document.getElementById('activityChart').getContext('2d');
+  const labels = members.map(m=>m.username);
+  const data = members.map(m=>m.messages);
+  if(chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type:'bar',
+    data: {
+      labels,
+      datasets:[{label:'Messages', data, backgroundColor:'#5865f2'}]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}}
+    }
+  });
+}
+
+// Refresh every 10s
+setInterval(()=>{
+  loadStats();
+  loadUsers();
+  loadLeaderboard();
+  loadTopContributors();
+  loadLogs();
+  loadActivityChart();
+},10000);
 </script>
 </body>
 </html>
