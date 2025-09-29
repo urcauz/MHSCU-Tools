@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Bot Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            color: #5865f2;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .status.online {
+            background: #57f287;
+            color: white;
+        }
+
+        .status.offline {
+            background: #ed4245;
+            color: white;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.15);
+        }
+
+        .card h3 {
+            color: #5865f2;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #5865f2;
+            margin-bottom: 10px;
+        }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .leaderboard-table th,
+        .leaderboard-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .leaderboard-table th {
+            background: #f8f9ff;
+            color: #5865f2;
+            font-weight: bold;
+        }
+
+        .leaderboard-table tr:hover {
+            background: #f8f9ff;
+        }
+
+        .medal {
+            font-size: 1.2rem;
+            margin-right: 8px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #5865f2, #7289da);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(88, 101, 242, 0.4);
+        }
+
+        .btn.danger {
+            background: linear-gradient(45deg, #ed4245, #c9302c);
+        }
+
+        .btn.danger:hover {
+            box-shadow: 0 5px 15px rgba(237, 66, 69, 0.4);
+        }
+
+        .btn.success {
+            background: linear-gradient(45deg, #57f287, #43a047);
+        }
+
+        .btn.success:hover {
+            box-shadow: 0 5px 15px rgba(87, 242, 135, 0.4);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #5865f2;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e3e5e8;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #5865f2;
+        }
+
+        .logs {
+            background: #2f3136;
+            color: #dcddde;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .log-entry {
+            margin-bottom: 10px;
+            padding: 5px 0;
+            border-bottom: 1px solid #40444b;
+        }
+
+        .log-time {
+            color: #72767d;
+            font-size: 0.9rem;
+        }
+
+        .settings-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin-top: 25px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .icon {
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Discord Bot Dashboard</h1>
+            <p>Manage your Discord bot from this web interface</p>
+            <div id="bot-status" class="status offline">🔴 Offline</div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Bot Statistics -->
+            <div class="card">
+                <h3><span class="icon">📊</span> Bot Statistics</h3>
+                <div class="stat-number" id="server-count">0</div>
+                <p>Servers Connected</p>
+                <div class="stat-number" id="user-count">0</div>
+                <p>Total Users in Leaderboard</p>
+                <div class="stat-number" id="total-messages">0</div>
+                <p>Messages This Week</p>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <h3><span class="icon">⚡</span> Quick Actions</h3>
+                <button class="btn" onclick="testLeaderboard()">🏆 Test Leaderboard</button>
+                <button class="btn success" onclick="resetLeaderboard()">🔄 Reset Leaderboard</button>
+                <button class="btn danger" onclick="restartBot()">🔄 Restart Bot</button>
+                <button class="btn" onclick="refreshData()">🔄 Refresh Data</button>
+            </div>
+
+            <!-- Current Leaderboard -->
+            <div class="card" style="grid-column: span 2;">
+                <h3><span class="icon">🏆</span> Current Leaderboard</h3>
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>User</th>
+                            <th>Messages</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 20px; color: #72767d;">
+                                Loading leaderboard data...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Send Announcement -->
+            <div class="card">
+                <h3><span class="icon">📢</span> Send Announcement</h3>
+                <div class="form-group">
+                    <label for="announcement-channel">Channel:</label>
+                    <select id="announcement-channel">
+                        <option value="leaderboard">Leaderboard Channel</option>
+                        <option value="general">General</option>
+                        <option value="announcements">Announcements</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="announcement-text">Message:</label>
+                    <textarea id="announcement-text" rows="4" placeholder="Enter your announcement..."></textarea>
+                </div>
+                <button class="btn" onclick="sendAnnouncement()">📤 Send Announcement</button>
+            </div>
+
+            <!-- Bot Logs -->
+            <div class="card">
+                <h3><span class="icon">📋</span> Recent Logs</h3>
+                <div class="logs" id="bot-logs">
+                    <div class="log-entry">
+                        <div class="log-time">2024-01-15 10:30:25</div>
+                        <div>✅ Bot started successfully</div>
+                    </div>
+                    <div class="log-entry">
+                        <div class="log-time">2024-01-15 10:30:30</div>
+                        <div>📊 Loaded leaderboard data (15 users)</div>
+                    </div>
+                    <div class="log-entry">
+                        <div class="log-time">2024-01-15 10:35:12</div>
+                        <div>🛡️ User kicked: TestUser#1234</div>
+                    </div>
+                </div>
+                <button class="btn" onclick="clearLogs()" style="margin-top: 10px;">🗑️ Clear Logs</button>
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div class="settings-section">
+            <h3><span class="icon">⚙️</span> Bot Settings</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div class="form-group">
+                    <label for="bot-prefix">Command Prefix:</label>
+                    <input type="text" id="bot-prefix" value="!" maxlength="5">
+                </div>
+                <div class="form-group">
+                    <label for="leaderboard-channel">Leaderboard Channel ID:</label>
+                    <input type="text" id="leaderboard-channel" placeholder="Enter channel ID">
+                </div>
+                <div class="form-group">
+                    <label for="winner-role">Winner Role ID:</label>
+                    <input type="text" id="winner-role" placeholder="Enter role ID">
+                </div>
+                <div class="form-group">
+                    <label for="auto-reset">Auto Reset Leaderboard:</label>
+                    <select id="auto-reset">
+                        <option value="weekly">Weekly (Sunday)</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn success" onclick="saveSettings()">💾 Save Settings</button>
+        </div>
+    </div>
+
+    <script>
+        // Mock data and functions - replace with actual API calls
+        let botOnline = false;
+        let leaderboardData = {};
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+            setInterval(refreshData, 30000); // Refresh every 30 seconds
+        });
+
+        async function loadDashboardData() {
+            try {
+                // In a real implementation, these would be API calls to your bot
+                // For now, we'll use mock data
+                
+                // Check bot status
+                const response = await fetch('/api/status').catch(() => null);
+                if (response && response.ok) {
+                    const data = await response.json();
+                    updateBotStatus(true);
+                    updateStats(data);
+                } else {
+                    updateBotStatus(false);
+                }
+
+                // Load leaderboard
+                loadLeaderboard();
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                showAlert('Error loading dashboard data', 'error');
+            }
+        }
+
+        function updateBotStatus(online) {
+            const statusElement = document.getElementById('bot-status');
+            if (online) {
+                statusElement.textContent = '🟢 Online';
+                statusElement.className = 'status online';
+                botOnline = true;
+            } else {
+                statusElement.textContent = '🔴 Offline';
+                statusElement.className = 'status offline';
+                botOnline = false;
+            }
+        }
+
+        function updateStats(data) {
+            document.getElementById('server-count').textContent = data.servers || '1';
+            document.getElementById('user-count').textContent = data.users || '0';
+            document.getElementById('total-messages').textContent = data.messages || '0';
+        }
+
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard').catch(() => null);
+                let data = {};
+                
+                if (response && response.ok) {
+                    data = await response.json();
+                } else {
+                    // Mock data for demonstration
+                    data = {
+                        "123456789": 156,
+                        "987654321": 134,
+                        "456789123": 98,
+                        "789123456": 76,
+                        "321654987": 45
+                    };
+                }
+
+                const tbody = document.getElementById('leaderboard-body');
+                tbody.innerHTML = '';
+
+                const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]).slice(0, 10);
+                const medals = ['🥇', '🥈', '🥉'];
+
+                if (sorted.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #72767d;">No leaderboard data available</td></tr>';
+                    return;
+                }
+
+                sorted.forEach(([userId, messages], index) => {
+                    const row = document.createElement('tr');
+                    const medal = index < 3 ? medals[index] : '';
+                    
+                    row.innerHTML = `
+                        <td><span class="medal">${medal}</span>#${index + 1}</td>
+                        <td>User ${userId.slice(-4)}</td>
+                        <td>${messages}</td>
+                        <td>
+                            <button class="btn" style="padding: 5px 10px; font-size: 0.8rem;" onclick="viewUser('${userId}')">View</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                leaderboardData = data;
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+                showAlert('Error loading leaderboard data', 'error');
+            }
+        }
+
+        async function testLeaderboard() {
+            if (!botOnline) {
+                showAlert('Bot is offline', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/test-leaderboard', { method: 'POST' });
+                if (response.ok) {
+                    showAlert('Leaderboard test sent successfully!', 'success');
+                    addLog('🏆 Leaderboard test executed');
+                } else {
+                    throw new Error('Failed to send test leaderboard');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Failed to send test leaderboard', 'error');
+            }
+        }
+
+        async function resetLeaderboard() {
+            if (!confirm('Are you sure you want to reset the leaderboard? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/reset-leaderboard', { method: 'POST' });
+                if (response.ok) {
+                    showAlert('Leaderboard reset successfully!', 'success');
+                    addLog('🔄 Leaderboard reset');
+                    loadLeaderboard();
+                } else {
+                    throw new Error('Failed to reset leaderboard');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Failed to reset leaderboard', 'error');
+            }
+        }
+
+        async function sendAnnouncement() {
+            const channel = document.getElementById('announcement-channel').value;
+            const text = document.getElementById('announcement-text').value.trim();
+
+            if (!text) {
+                showAlert('Please enter an announcement message', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/announcement', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channel, message: text })
+                });
+
+                if (response.ok) {
+                    showAlert('Announcement sent successfully!', 'success');
+                    document.getElementById('announcement-text').value = '';
+                    addLog(`📢 Announcement sent to ${channel}`);
+                } else {
+                    throw new Error('Failed to send announcement');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Failed to send announcement', 'error');
+            }
+        }
+
+        function refreshData() {
+            loadDashboardData();
+            showAlert('Dashboard data refreshed', 'success');
+        }
+
+        function restartBot() {
+            if (!confirm('Are you sure you want to restart the bot?')) {
+                return;
+            }
+            showAlert('Bot restart initiated...', 'success');
+            addLog('🔄 Bot restart initiated');
+        }
+
+        function saveSettings() {
+            showAlert('Settings saved successfully!', 'success');
+            addLog('⚙️ Settings updated');
+        }
+
+        function viewUser(userId) {
+            alert(`Viewing user ${userId}\nMessages: ${leaderboardData[userId]}`);
+        }
+
+        function clearLogs() {
+            document.getElementById('bot-logs').innerHTML = '';
+            showAlert('Logs cleared', 'success');
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${type}`;
+            alertDiv.textContent = message;
+            
+            document.body.insertBefore(alertDiv, document.body.firstChild);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        function addLog(message) {
+            const logsContainer = document.getElementById('bot-logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <div class="log-time">${new Date().toLocaleString()}</div>
+                <div>${message}</div>
+            `;
+            
+            logsContainer.insertBefore(logEntry, logsContainer.firstChild);
+            
+            // Keep only last 10 logs
+            const logs = logsContainer.querySelectorAll('.log-entry');
+            if (logs.length > 10) {
+                logs[logs.length - 1].remove();
+            }
+        }
+    </script>
+</body>
+</html>
