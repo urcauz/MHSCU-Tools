@@ -787,5 +787,20 @@ process.on("SIGINT", () => {
   client.destroy();
   process.exit(0);
 });
-
+app.get("/api/members", async (req, res) => {
+  const guild = client.guilds.cache.get("YOUR_GUILD_ID");
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+  await guild.members.fetch(); // fetch all members from Discord
+  const members = guild.members.cache.map(member => ({
+    id: member.id,
+    username: member.user.username,
+    tag: member.user.tag,
+    avatar: member.user.displayAvatarURL(),
+    roles: member.roles.cache.map(r => r.name),
+    bot: member.user.bot,
+    joinedAt: member.joinedAt,
+    presence: member.presence?.status || "offline"
+  }));
+  res.json(members);
+});
 client.login(process.env.TOKEN);
