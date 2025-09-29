@@ -2,296 +2,257 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Community Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MHSCU Community Dashboard</title>
 <style>
-  /* Basic Reset & Layout */
-  body { margin:0; font-family: Arial,sans-serif; background:#f4f4f4; transition: background 0.3s, color 0.3s;}
-  header { background:#0052cc; color:white; padding:15px; text-align:center; position:relative;}
-  #logout { position:absolute; right:20px; top:15px; cursor:pointer; }
-  #themeToggle { position:absolute; right:100px; top:15px; cursor:pointer; }
-  #dashboard { padding:20px; max-width:1400px; margin:auto; display:grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap:20px; }
-
-  .card { background:white; padding:15px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-  table { width:100%; border-collapse:collapse; }
-  th, td { padding:8px; border-bottom:1px solid #ddd; text-align:left; }
-  th { background:#f0f0f0; }
-  img.avatar { width:35px; border-radius:50%; vertical-align:middle; margin-right:8px; }
-  .role-badge { display:inline-block; padding:2px 6px; border-radius:4px; margin:1px; font-size:12px; color:white; }
-  .online { color:green; font-weight:bold; }
-  .offline { color:red; font-weight:bold; }
-
-  input[type="text"]{padding:6px;width:100%;margin-bottom:8px;border-radius:4px;border:1px solid #ccc;}
-  button {padding:4px 8px;margin:2px;border:none;border-radius:4px;cursor:pointer;}
-  button.mute{background:#ffa500;color:white;}
-  button.unmute{background:#28a745;color:white;}
-  button.kick{background:#dc3545;color:white;}
-  button.ban{background:#800000;color:white;}
-  button.timeout{background:#ffc107;color:white;}
-
-  /* Dark Mode */
-  body.dark { background:#181818; color:white; }
-  body.dark .card { background:#242424; }
-  body.dark th { background:#333; }
+  body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f0f2f5; color: #111; transition: background 0.3s, color 0.3s; }
+  body.dark { background: #18191c; color: #e4e6eb; }
+  header { padding: 20px; background: #5865f2; color: white; display: flex; justify-content: space-between; align-items: center; }
+  .dark header { background: #333; }
+  .container { padding: 20px; max-width: 1200px; margin: auto; }
+  h2 { margin-top: 40px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ccc; }
+  .dark th, .dark td { border-color: #555; }
+  button { margin: 2px; padding: 5px 10px; cursor: pointer; }
+  .status { font-weight: bold; }
+  .login-container { display: flex; flex-direction: column; max-width: 300px; margin: 100px auto; }
+  .login-container input { margin-bottom: 10px; padding: 8px; }
+  .badge { padding: 2px 6px; border-radius: 4px; color: white; font-size: 0.8em; }
+  .role-admin { background: #f04747; }
+  .role-moderator { background: #faa81a; }
+  .role-member { background: #43b581; }
 </style>
 </head>
 <body>
-
 <header>
-  <h1>Community Dashboard</h1>
-  <span id="themeToggle">🌙 Toggle Theme</span>
-  <span id="logout">Logout</span>
+  <div>MHSCU Community Dashboard</div>
+  <div>
+    <button id="themeToggle">🌙 Toggle Dark/Light</button>
+    <span id="statusIndicator" class="status">Offline</span>
+  </div>
 </header>
 
-<div id="dashboard">
-
-  <!-- Server Stats -->
-  <div class="card">
-    <h2>Server Overview</h2>
+<div class="container" id="dashboard" style="display:none;">
+  
+  <h2>Server Stats</h2>
+  <div id="stats">
     <p>Total Members: <span id="totalMembers">0</span></p>
-    <p>Online Members: <span id="onlineMembers">0</span></p>
-    <p>Bots: <span id="botCount">0</span></p>
     <p>Muted Users: <span id="mutedUsers">0</span></p>
-    <p>Recent Joins: <span id="recentJoins">0</span></p>
-    <p>Recent Leaves: <span id="recentLeaves">0</span></p>
-    <p>Active Voice Users: <span id="activeVC">0</span></p>
+    <p>Bot Online: <span id="botOnline">❌</span></p>
   </div>
 
-  <!-- Leaderboard -->
-  <div class="card">
-    <h2>Weekly Leaderboard</h2>
-    <ul id="leaderboardList"></ul>
-    <button onclick="resetLeaderboard()">Reset Leaderboard</button>
-  </div>
+  <h2>Leaderboard / Engagement</h2>
+  <table id="leaderboardTable">
+    <thead>
+      <tr><th>#</th><th>User</th><th>Messages</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button id="resetLeaderboardBtn">Reset Leaderboard</button>
 
-  <!-- Top Contributors -->
-  <div class="card">
-    <h2>Top Contributors</h2>
-    <div id="topContributors"></div>
-  </div>
+  <h2>Moderation Logs</h2>
+  <table id="logsTable">
+    <thead>
+      <tr><th>Time</th><th>Action</th><th>User</th><th>Moderator</th><th>Reason</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-  <!-- Announcements -->
-  <div class="card">
-    <h2>Announcements</h2>
-    <input type="text" id="announcementInput" placeholder="Write announcement...">
-    <select id="announcementPing">
-      <option value="@everyone">Everyone</option>
-      <option value="@mods">Mods</option>
-    </select>
-    <button onclick="sendAnnouncement()">Send</button>
-    <ul id="announcementHistory"></ul>
-  </div>
+  <h2>Announcements</h2>
+  <textarea id="announcementText" rows="3" style="width:100%;"></textarea>
+  <select id="announcementChannel">
+    <option value="leaderboard">Leaderboard</option>
+    <option value="suggestions">Suggestions</option>
+    <option value="logs">Logs</option>
+  </select>
+  <button id="sendAnnouncementBtn">Send Announcement</button>
 
-  <!-- Moderation Logs -->
-  <div class="card">
-    <h2>Moderation Logs</h2>
-    <select id="logFilter">
-      <option value="all">All Actions</option>
-      <option value="mute">Mute</option>
-      <option value="unmute">Unmute</option>
-      <option value="kick">Kick</option>
-      <option value="ban">Ban</option>
-      <option value="timeout">Timeout</option>
-    </select>
-    <button onclick="exportLogs()">Export CSV</button>
-    <table>
-      <thead><tr><th>Action</th><th>Target</th><th>By</th><th>Reason</th><th>Time</th></tr></thead>
-      <tbody id="logTable"></tbody>
-    </table>
-  </div>
+  <h2>Users</h2>
+  <input type="text" id="searchUser" placeholder="Search username or ID..." style="margin-bottom:10px;padding:5px;width:300px;">
+  <table id="usersTable">
+    <thead>
+      <tr><th>User</th><th>Messages</th><th>Actions</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
 
-  <!-- Users -->
-  <div class="card" style="grid-column:1/-1;">
-    <h2>Users</h2>
-    <input type="text" id="userSearch" placeholder="Search users...">
-    <table>
-      <thead><tr><th>User</th><th>Roles</th><th>Status</th><th>Join Date</th><th>Actions</th></tr></thead>
-      <tbody id="userTable"></tbody>
-    </table>
-  </div>
-
+<div class="login-container" id="loginContainer">
+  <h2>Login</h2>
+  <input type="password" id="dashboardPassword" placeholder="Enter password">
+  <button id="loginBtn">Login</button>
+  <p id="loginError" style="color:red;"></p>
 </div>
 
 <script>
-const API_BASE = 'https://mhscu-tools.onrender.com/';
-const API_BASE = 'https://mhscu-tools.onrender.com/api';
+const API_BASE = 'https://mhscu-tools.onrender.com';
+const DASHBOARD_PASSWORD = localStorage.getItem('dashboardPassword') || null;
 
-async function fetchStatus() {
-  try {
-    const response = await fetch(`${API_BASE}/status`);
-    const data = await response.json(); // ✅ This is JSON
-    console.log(data);
-  } catch (err) {
-    console.error('Error fetching status:', err);
-  }
-}
+const loginContainer = document.getElementById('loginContainer');
+const dashboard = document.getElementById('dashboard');
 
-fetchStatus();
-let DASHBOARD_PASSWORD = localStorage.getItem("dashboardPassword");
-let users = [], logs = [];
+const statusIndicator = document.getElementById('statusIndicator');
+const totalMembersEl = document.getElementById('totalMembers');
+const mutedUsersEl = document.getElementById('mutedUsers');
+const botOnlineEl = document.getElementById('botOnline');
 
-// Login
-async function login() {
-  if(!DASHBOARD_PASSWORD){
-    const pw = prompt("Enter dashboard password:");
-    if(pw !== 'admin123'){ alert("Wrong password!"); document.body.innerHTML="<h1>Unauthorized</h1>"; return false;}
-    localStorage.setItem("dashboardPassword", pw);
-    DASHBOARD_PASSWORD = pw;
-  }
-  return true;
-}
+const leaderboardTableBody = document.querySelector('#leaderboardTable tbody');
+const logsTableBody = document.querySelector('#logsTable tbody');
+const usersTableBody = document.querySelector('#usersTable tbody');
 
-// Theme toggle
-document.getElementById('themeToggle').onclick = ()=>{
+const themeToggle = document.getElementById('themeToggle');
+themeToggle.addEventListener('click', () => {
   document.body.classList.toggle('dark');
-}
-
-// Logout
-document.getElementById('logout').onclick = ()=>{
-  localStorage.removeItem('dashboardPassword');
-  location.reload();
-}
-
-// Fetch server stats
-async function fetchServerStats(){
-  const res = await fetch(`${API_BASE}/status`, {headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
-  const data = await res.json();
-  document.getElementById('totalMembers').innerText = data.users;
-  document.getElementById('onlineMembers').innerText = data.onlineMembers;
-  document.getElementById('mutedUsers').innerText = data.mutedUsers;
-  document.getElementById('botCount').innerText = data.botCount;
-  document.getElementById('recentJoins').innerText = data.recentJoins;
-  document.getElementById('recentLeaves').innerText = data.recentLeaves;
-  document.getElementById('activeVC').innerText = data.activeVC;
-}
-
-// Fetch leaderboard
-async function fetchLeaderboard(){
-  const res = await fetch(`${API_BASE}/leaderboard`, {headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
-  const data = await res.json();
-  const list = document.getElementById('leaderboardList');
-  list.innerHTML = '';
-  Object.entries(data).sort((a,b)=>b[1]-a[1]).forEach(([id,count],i)=>{
-    const li=document.createElement('li'); li.innerText=`#${i+1}: ${id} - ${count} points`; list.appendChild(li);
-  });
-}
-
-// Top contributors
-async function fetchTopContributors(){
-  const res = await fetch(`${API_BASE}/topcontributors`, {headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
-  const data = await res.json();
-  const div=document.getElementById('topContributors'); div.innerHTML='';
-  data.forEach(u=>{
-    const img=document.createElement('img'); img.src=u.avatar; img.title=u.username;
-    img.style.width='30px'; img.style.borderRadius='50%'; img.style.margin='2px';
-    div.appendChild(img);
-  });
-}
-
-// Users
-async function fetchUsers(){
-  const res=await fetch(`${API_BASE}/users`,{headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
-  users = await res.json();
-  renderUsers(users);
-}
-function renderUsers(list){
-  const tbody=document.getElementById('userTable');
-  tbody.innerHTML='';
-  list.forEach(u=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td><img src="${u.avatar}" class="avatar">${u.username}${u.bot?' 🤖':''}</td>
-      <td>${u.roles.map(r=>`<span class="role-badge" style="background:${r.color}">${r.name}</span>`).join('')}</td>
-      <td class="${u.status}">${u.status}</td>
-      <td>${new Date(u.joinDate).toLocaleDateString()}</td>
-      <td>
-        <button class="mute" onclick="moderate('${u.id}','mute')">Mute</button>
-        <button class="unmute" onclick="moderate('${u.id}','unmute')">Unmute</button>
-        <button class="kick" onclick="moderate('${u.id}','kick')">Kick</button>
-        <button class="ban" onclick="moderate('${u.id}','ban')">Ban</button>
-        <button class="timeout" onclick="moderate('${u.id}','timeout')">Timeout</button>
-      </td>`;
-    tbody.appendChild(tr);
-  });
-}
-document.getElementById('userSearch').addEventListener('input',(e)=>{
-  const term=e.target.value.toLowerCase();
-  renderUsers(users.filter(u=>u.username.toLowerCase().includes(term)));
 });
 
-// Moderation
-async function moderate(userId, action){
-  const reason = prompt(`Reason for ${action}?`);
-  const res = await fetch(`${API_BASE}/moderation`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json', Authorization:'Bearer '+DASHBOARD_PASSWORD},
-    body:JSON.stringify({userId,action,reason})
-  });
-  const data = await res.json();
-  alert(data.message);
-  fetchServerStats(); fetchUsers(); fetchLogs();
+function setStatus(online) {
+  statusIndicator.textContent = online ? '✅ Online' : '❌ Offline';
+  botOnlineEl.textContent = online ? '✅' : '❌';
 }
 
-// Moderation logs
-async function fetchLogs(){
-  const res = await fetch(`${API_BASE}/logs`,{headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
-  logs = await res.json();
-  renderLogs(logs);
-}
-function renderLogs(list){
-  const filter=document.getElementById('logFilter').value;
-  const tbody=document.getElementById('logTable');
-  tbody.innerHTML='';
-  list.filter(l=>filter==='all'||l.action===filter).forEach(l=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${l.action}</td><td>${l.target}</td><td>${l.by}</td><td>${l.reason}</td><td>${new Date(l.time).toLocaleString()}</td>`;
-    tbody.appendChild(tr);
-  });
-}
-document.getElementById('logFilter').addEventListener('change',()=>renderLogs(logs));
-function exportLogs(){
-  let csv='Action,Target,By,Reason,Time\n';
-  logs.forEach(l=>csv+=`${l.action},${l.target},${l.by},"${l.reason}",${new Date(l.time).toLocaleString()}\n`);
-  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download='moderation_logs.csv'; a.click();
+async function fetchStats() {
+  try {
+    const res = await fetch(`${API_BASE}/api/status`);
+    const data = await res.json();
+    totalMembersEl.textContent = data.users || 0;
+    mutedUsersEl.textContent = data.mutedUsers || 0;
+    setStatus(data.online);
+  } catch (err) {
+    console.error(err);
+    setStatus(false);
+  }
 }
 
-// Announcements
-async function sendAnnouncement(){
-  const msg=document.getElementById('announcementInput').value;
-  const ping=document.getElementById('announcementPing').value;
-  if(!msg){ alert("Enter message"); return;}
-  const res=await fetch(`${API_BASE}/announce`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json', Authorization:'Bearer '+DASHBOARD_PASSWORD},
-    body:JSON.stringify({message:msg,ping})
-  });
-  const data=await res.json();
-  alert(data.message);
-  document.getElementById('announcementInput').value='';
-  fetchAnnouncements();
+async function fetchLeaderboard() {
+  try {
+    const res = await fetch(`${API_BASE}/api/leaderboard`);
+    const data = await res.json();
+    leaderboardTableBody.innerHTML = '';
+    usersTableBody.innerHTML = '';
+    const sorted = Object.entries(data).sort((a,b) => b[1]-a[1]);
+    sorted.forEach(([id, count], i) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${i+1}</td><td>${id}</td><td>${count}</td>`;
+      leaderboardTableBody.appendChild(row);
+
+      const userRow = document.createElement('tr');
+      userRow.innerHTML = `<td>${id}</td><td>${count}</td>
+        <td>
+          <button onclick="moderate('${id}','mute')">Mute</button>
+          <button onclick="moderate('${id}','unmute')">Unmute</button>
+          <button onclick="moderate('${id}','kick')">Kick</button>
+          <button onclick="moderate('${id}','ban')">Ban</button>
+          <button onclick="moderate('${id}','timeout')">Timeout</button>
+        </td>`;
+      usersTableBody.appendChild(userRow);
+    });
+  } catch (err) {
+    console.error(err);
+  }
 }
-async function fetchAnnouncements(){
-  const res=await fetch(`${API_BASE}/announcements`,{headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
-  const data=await res.json();
-  const ul=document.getElementById('announcementHistory');
-  ul.innerHTML='';
-  data.forEach(a=>{const li=document.createElement('li'); li.innerText=`[${new Date(a.time).toLocaleString()}] ${a.ping} ${a.message}`; ul.appendChild(li);});
+
+async function fetchLogs() {
+  try {
+    const res = await fetch(`${API_BASE}/api/logs`);
+    const data = await res.json();
+    logsTableBody.innerHTML = '';
+    data.forEach(log => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${new Date(log.time).toLocaleString()}</td>
+        <td>${log.action || 'Action'}</td>
+        <td>${log.user || '-'}</td>
+        <td>${log.moderator || '-'}</td>
+        <td>${log.reason || '-'}</td>`;
+      logsTableBody.appendChild(row);
+    });
+  } catch(err){console.error(err);}
 }
+
+async function moderate(userId, action) {
+  const reason = prompt("Enter reason (optional)");
+  const duration = action === 'timeout' ? prompt("Timeout duration in minutes", "10") : null;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + DASHBOARD_PASSWORD },
+      body: JSON.stringify({ userId, reason, duration })
+    });
+    const data = await res.json();
+    alert(data.success ? `${action} successful` : `Failed: ${data.error}`);
+    fetchLeaderboard();
+    fetchLogs();
+  } catch(err){console.error(err);}
+}
+
+// Announcement
+document.getElementById('sendAnnouncementBtn').addEventListener('click', async ()=>{
+  const message = document.getElementById('announcementText').value;
+  const channel = document.getElementById('announcementChannel').value;
+  try {
+    const res = await fetch(`${API_BASE}/api/announcement`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization': 'Bearer '+DASHBOARD_PASSWORD },
+      body: JSON.stringify({ channel, message })
+    });
+    const data = await res.json();
+    alert(data.success ? "Announcement sent!" : `Failed: ${data.error}`);
+  } catch(err){console.error(err);}
+});
 
 // Reset leaderboard
-async function resetLeaderboard(){
-  const res = await fetch(`${API_BASE}/leaderboard/reset`,{method:'POST',headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
-  const data = await res.json(); alert(data.message); fetchLeaderboard();
+document.getElementById('resetLeaderboardBtn').addEventListener('click', async ()=>{
+  if(!confirm("Reset leaderboard?")) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/reset-leaderboard`, {
+      method:'POST',
+      headers:{ 'Authorization': 'Bearer '+DASHBOARD_PASSWORD }
+    });
+    const data = await res.json();
+    alert(data.success ? "Leaderboard reset!" : `Failed: ${data.error}`);
+    fetchLeaderboard();
+  } catch(err){console.error(err);}
+});
+
+// Login handling
+function showDashboard() {
+  loginContainer.style.display = 'none';
+  dashboard.style.display = 'block';
+  fetchStats();
+  fetchLeaderboard();
+  fetchLogs();
 }
 
-// Initial load
-login().then(ok=>{
-  if(ok){
-    fetchServerStats(); fetchLeaderboard(); fetchTopContributors(); fetchUsers(); fetchLogs(); fetchAnnouncements();
-    setInterval(()=>{ fetchServerStats(); fetchLeaderboard(); fetchTopContributors(); fetchUsers(); fetchLogs(); fetchAnnouncements(); },15000);
-  }
-});
-</script>
+if(DASHBOARD_PASSWORD){
+  showDashboard();
+} else {
+  document.getElementById('loginBtn').addEventListener('click', ()=>{
+    const pass = document.getElementById('dashboardPassword').value;
+    if(pass === 'admin123'){ // match your server .env
+      localStorage.setItem('dashboardPassword', pass);
+      location.reload();
+    } else {
+      document.getElementById('loginError').textContent = 'Incorrect password';
+    }
+  });
+}
 
+// Search filter
+document.getElementById('searchUser').addEventListener('input', e=>{
+  const term = e.target.value.toLowerCase();
+  usersTableBody.querySelectorAll('tr').forEach(row=>{
+    row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none';
+  });
+});
+
+// Refresh data every 10 seconds
+setInterval(()=>{
+  fetchStats();
+  fetchLeaderboard();
+  fetchLogs();
+}, 10000);
+
+</script>
 </body>
 </html>
