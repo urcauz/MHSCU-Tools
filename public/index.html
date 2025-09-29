@@ -5,40 +5,60 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MHSCU Bot Dashboard</title>
 <style>
-  /* Base Styles */
+  :root {
+    --bg-color: #f5f7fa;
+    --text-color: #333;
+    --header-bg: #34495e;
+    --card-bg: white;
+    --btn-bg: #3498db;
+    --btn-hover: #2980b9;
+    --th-bg: #3498db;
+    --th-color: white;
+    --tbody-hover: #f1f6fb;
+  }
+  [data-theme="dark"] {
+    --bg-color: #1e1e2f;
+    --text-color: #e0e0e0;
+    --header-bg: #2c3e50;
+    --card-bg: #2c3e50;
+    --btn-bg: #5dade2;
+    --btn-hover: #3498db;
+    --th-bg: #5dade2;
+    --th-color: #fff;
+    --tbody-hover: #34495e;
+  }
+
   * { box-sizing: border-box; margin:0; padding:0; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
-  body { background:#f5f7fa; color:#333; }
-  header { background:#34495e; color:white; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; }
+  body { background: var(--bg-color); color: var(--text-color); transition: all 0.3s ease; }
+  header { background: var(--header-bg); color:white; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; }
   header h1 { font-weight:500; font-size:1.5rem; }
-  main { padding:2rem; display:none; }
+  main { padding:2rem; display:none; transition: all 0.3s ease; }
 
-  /* Section Cards */
-  section { background:white; padding:1.5rem; margin-bottom:1.5rem; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
-  h2 { font-size:1.2rem; margin-bottom:1rem; color:#2c3e50; }
+  section { background: var(--card-bg); padding:1.5rem; margin-bottom:1.5rem; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s ease; }
+  h2 { font-size:1.2rem; margin-bottom:1rem; color: var(--text-color); }
 
-  /* Buttons & Inputs */
-  button { padding:0.5rem 1rem; border:none; border-radius:6px; cursor:pointer; background:#3498db; color:white; transition:0.2s; }
-  button:hover { background:#2980b9; }
+  button { padding:0.5rem 1rem; border:none; border-radius:6px; cursor:pointer; background: var(--btn-bg); color:white; transition:0.2s; }
+  button:hover { background: var(--btn-hover); }
   input, select, textarea { width:100%; padding:0.5rem; margin:0.3rem 0; border:1px solid #ccc; border-radius:6px; font-size:0.95rem; }
   textarea { resize:none; min-height:80px; }
 
-  /* Tables */
   table { width:100%; border-collapse: collapse; margin-top:0.5rem; }
   th, td { padding:0.6rem 0.8rem; border:1px solid #e1e4e8; text-align:left; }
-  th { background:#3498db; color:white; }
-  tbody tr:hover { background:#f1f6fb; }
+  th { background: var(--th-bg); color: var(--th-color); }
+  tbody tr:hover { background: var(--tbody-hover); }
 
-  /* Logs */
   #logsList { list-style:none; max-height:200px; overflow:auto; padding-left:0.5rem; }
 
-  /* Password Prompt */
   #passwordPrompt { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; }
   #passwordPrompt div { background:white; padding:2rem; border-radius:10px; width:300px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.2);}
   #passwordPrompt input { margin-bottom:1rem; }
 
+  /* Theme Toggle Button */
+  #themeToggle { padding:0.3rem 0.6rem; font-size:0.9rem; border-radius:6px; margin-left:1rem; background:#ecf0f1; color:#2c3e50; border:none; cursor:pointer; }
+  [data-theme="dark"] #themeToggle { background:#34495e; color:#fff; }
 </style>
 </head>
-<body>
+<body data-theme="light">
 
 <!-- Password Overlay -->
 <div id="passwordPrompt">
@@ -52,7 +72,10 @@
 
 <header>
   <h1>MHSCU Bot Dashboard</h1>
-  <span id="botStatusHeader">Status: Loading...</span>
+  <div>
+    <span id="botStatusHeader">Status: Loading...</span>
+    <button id="themeToggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+  </div>
 </header>
 
 <main id="dashboard">
@@ -115,6 +138,18 @@
 
 <script>
 let AUTH_HEADER = null;
+
+function toggleTheme(){
+  const body = document.body;
+  const toggle = document.getElementById('themeToggle');
+  if(body.getAttribute('data-theme') === 'light'){
+    body.setAttribute('data-theme','dark');
+    toggle.textContent = '☀️ Light Mode';
+  } else {
+    body.setAttribute('data-theme','light');
+    toggle.textContent = '🌙 Dark Mode';
+  }
+}
 
 function checkPassword() {
   const passInput = document.getElementById('dashboardPassword').value;
