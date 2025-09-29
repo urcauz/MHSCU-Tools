@@ -110,6 +110,8 @@ function setStatus(online) {
   statusIndicator.textContent = online ? '✅ Online' : '❌ Offline';
   botOnlineEl.textContent = online ? '✅' : '❌';
 }
+const res = await fetch(`${API_BASE}/api/members`);
+const members = await res.json();
 
 async function fetchStats() {
   try {
