@@ -1,290 +1,206 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MHSCU Bot Dashboard</title>
-<style>
-  :root {
-    --bg-color: #f5f7fa;
-    --text-color: #333;
-    --header-bg: #34495e;
-    --card-bg: white;
-    --btn-bg: #3498db;
-    --btn-hover: #2980b9;
-    --th-bg: #3498db;
-    --th-color: white;
-    --tbody-hover: #f1f6fb;
-  }
-  [data-theme="dark"] {
-    --bg-color: #1e1e2f;
-    --text-color: #e0e0e0;
-    --header-bg: #2c3e50;
-    --card-bg: #2c3e50;
-    --btn-bg: #5dade2;
-    --btn-hover: #3498db;
-    --th-bg: #5dade2;
-    --th-color: #fff;
-    --tbody-hover: #34495e;
-  }
-
-  * { box-sizing: border-box; margin:0; padding:0; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
-  body { background: var(--bg-color); color: var(--text-color); transition: all 0.3s ease; }
-  header { background: var(--header-bg); color:white; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; }
-  header h1 { font-weight:500; font-size:1.5rem; }
-  main { padding:2rem; display:none; transition: all 0.3s ease; }
-
-  section { background: var(--card-bg); padding:1.5rem; margin-bottom:1.5rem; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s ease; }
-  h2 { font-size:1.2rem; margin-bottom:1rem; color: var(--text-color); }
-
-  button { padding:0.5rem 1rem; border:none; border-radius:6px; cursor:pointer; background: var(--btn-bg); color:white; transition:0.2s; }
-  button:hover { background: var(--btn-hover); }
-  input, select, textarea { width:100%; padding:0.5rem; margin:0.3rem 0; border:1px solid #ccc; border-radius:6px; font-size:0.95rem; }
-  textarea { resize:none; min-height:80px; }
-
-  table { width:100%; border-collapse: collapse; margin-top:0.5rem; }
-  th, td { padding:0.6rem 0.8rem; border:1px solid #e1e4e8; text-align:left; }
-  th { background: var(--th-bg); color: var(--th-color); }
-  tbody tr:hover { background: var(--tbody-hover); }
-
-  #logsList { list-style:none; max-height:200px; overflow:auto; padding-left:0.5rem; }
-
-  #passwordPrompt { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; }
-  #passwordPrompt div { background:white; padding:2rem; border-radius:10px; width:300px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.2);}
-  #passwordPrompt input { margin-bottom:1rem; }
-
-  /* Theme Toggle Button */
-  #themeToggle { padding:0.3rem 0.6rem; font-size:0.9rem; border-radius:6px; margin-left:1rem; background:#ecf0f1; color:#2c3e50; border:none; cursor:pointer; }
-  [data-theme="dark"] #themeToggle { background:#34495e; color:#fff; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MHSCU Community Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f4f4f4; color:#222; }
+    body.dark { background:#181818; color:#f0f0f0; }
+    header { background:#5865F2; color:white; padding:1rem; display:flex; justify-content:space-between; align-items:center; }
+    header button { padding:.5rem 1rem; cursor:pointer; border:none; border-radius:5px; background:#fff;color:#5865F2; font-weight:bold; }
+    main { display:flex; flex-wrap:wrap; padding:1rem; gap:1rem; }
+    section { background:white; border-radius:10px; padding:1rem; flex:1 1 300px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+    body.dark section { background:#282828; box-shadow:0 2px 8px rgba(0,0,0,0.5); }
+    table { width:100%; border-collapse:collapse; }
+    table th, table td { border:1px solid #ccc; padding:.5rem; text-align:left; }
+    body.dark table th, body.dark table td { border-color:#444; }
+    .user-actions button { margin-right:0.3rem; }
+    input, select, textarea { width:100%; padding:.5rem; margin:.3rem 0; border-radius:5px; border:1px solid #ccc; }
+    body.dark input, body.dark select, body.dark textarea { border-color:#444; background:#333; color:#fff; }
+  </style>
 </head>
-<body data-theme="light">
-
-<!-- Password Overlay -->
-<div id="passwordPrompt">
-  <div>
-    <h2>Dashboard Login</h2>
-    <input type="password" id="dashboardPassword" placeholder="Enter password">
-    <button onclick="checkPassword()">Login</button>
-    <p id="passMsg" style="color:red; margin-top:0.5rem;"></p>
-  </div>
-</div>
-
-<header>
-  <h1>MHSCU Bot Dashboard</h1>
-  <div>
-    <span id="botStatusHeader">Status: Loading...</span>
-    <button id="themeToggle" onclick="toggleTheme()">🌙 Dark Mode</button>
-  </div>
-</header>
-
-<main id="dashboard">
-
-  <!-- Bot Overview -->
-  <section>
-    <h2>Bot Overview</h2>
-    <p>Uptime: <span id="botUptime">0s</span></p>
-    <p>Total Messages: <span id="totalMessages">0</span></p>
-    <p>Muted Users: <span id="mutedUsers">0</span></p>
-  </section>
-
-  <!-- Leaderboard -->
-  <section>
-    <h2>Leaderboard</h2>
-    <table>
-      <thead>
-        <tr><th>User ID</th><th>Messages</th></tr>
-      </thead>
-      <tbody id="leaderboardBody"></tbody>
-    </table>
-    <div style="margin-top:0.5rem;">
-      <button onclick="resetLeaderboard()">Reset Leaderboard</button>
-      <button onclick="sendTestLeaderboard()">Send Test Leaderboard</button>
+<body>
+  <header>
+    <h1>MHSCU Community Dashboard</h1>
+    <div>
+      <button id="themeToggle">Dark/Light</button>
+      <button id="logoutBtn">Logout</button>
     </div>
-  </section>
+  </header>
 
-  <!-- Announcements -->
-  <section>
-    <h2>Send Announcement</h2>
-    <select id="announcementChannel">
-      <option value="leaderboard">Leaderboard Channel</option>
-      <option value="suggestions">Suggestions Channel</option>
-      <option value="logs">Logs Channel</option>
-    </select>
-    <textarea id="announcementMessage" placeholder="Type your announcement here..."></textarea>
-    <button onclick="sendAnnouncement()">Send</button>
-  </section>
+  <main>
+    <!-- Server Stats -->
+    <section>
+      <h2>Server Stats</h2>
+      <p>Members: <span id="totalMembers">0</span></p>
+      <p>Online: <span id="onlineMembers">0</span></p>
+      <p>Bots: <span id="botCount">0</span></p>
+      <p>Muted Users: <span id="mutedUsers">0</span></p>
+    </section>
 
-  <!-- Logs -->
-  <section>
-    <h2>Logs</h2>
-    <ul id="logsList"></ul>
-    <button onclick="loadLogs()">Refresh Logs</button>
-  </section>
+    <!-- Leaderboard -->
+    <section>
+      <h2>Leaderboard</h2>
+      <canvas id="leaderboardChart" height="200"></canvas>
+      <button id="resetLeaderboardBtn">Reset Leaderboard</button>
+      <button id="announceLeaderboardBtn">Announce Winners</button>
+    </section>
 
-  <!-- Moderation -->
-  <section>
-    <h2>User Moderation</h2>
-    <input type="text" id="userSearch" placeholder="Search user by ID or name" oninput="filterUsers()">
-    <table>
-      <thead>
-        <tr><th>User ID</th><th>Actions</th></tr>
-      </thead>
-      <tbody id="userListBody"></tbody>
-    </table>
-  </section>
+    <!-- Users Table -->
+    <section>
+      <h2>Users</h2>
+      <input type="text" id="searchUser" placeholder="Search by username..." />
+      <table id="usersTable">
+        <thead>
+          <tr>
+            <th>Avatar</th>
+            <th>Username</th>
+            <th>Roles</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
 
-</main>
+    <!-- Moderation Logs -->
+    <section>
+      <h2>Moderation Logs</h2>
+      <table id="logsTable">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Action</th>
+            <th>User</th>
+            <th>Moderator</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
 
-<script>
-let AUTH_HEADER = null;
+    <!-- Announcements -->
+    <section>
+      <h2>Announcements</h2>
+      <select id="announcementChannel">
+        <option value="leaderboard">Leaderboard</option>
+        <option value="suggestions">Suggestions</option>
+        <option value="logs">Logs</option>
+      </select>
+      <textarea id="announcementMessage" placeholder="Your message..."></textarea>
+      <button id="sendAnnouncementBtn">Send Announcement</button>
+    </section>
+  </main>
 
-function toggleTheme(){
-  const body = document.body;
-  const toggle = document.getElementById('themeToggle');
-  if(body.getAttribute('data-theme') === 'light'){
-    body.setAttribute('data-theme','dark');
-    toggle.textContent = '☀️ Light Mode';
-  } else {
-    body.setAttribute('data-theme','light');
-    toggle.textContent = '🌙 Dark Mode';
-  }
-}
+  <script>
+    const DASHBOARD_PASSWORD = prompt("Enter dashboard password:");
+    if(DASHBOARD_PASSWORD !== 'admin123'){ // your password
+      alert("Wrong password!");
+      document.body.innerHTML = "<h1 style='text-align:center;margin-top:50px;'>Unauthorized</h1>";
+    }
 
-function checkPassword() {
-  const passInput = document.getElementById('dashboardPassword').value;
-  if (!passInput) return;
-  AUTH_HEADER = "Bearer " + passInput;
-  document.getElementById('passwordPrompt').style.display = "none";
-  document.getElementById('dashboard').style.display = "block";
-  initDashboard();
-}
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.onclick = () => document.body.classList.toggle('dark');
 
-async function fetchAPI(endpoint, options={}) {
-  if (!options.headers) options.headers = {};
-  if (AUTH_HEADER) options.headers['Authorization'] = AUTH_HEADER;
-  const res = await fetch(endpoint, options);
-  if (res.status === 401) {
-    alert("Incorrect password!");
-    location.reload();
-    return;
-  }
-  return res.json();
-}
+    const logoutBtn = document.getElementById('logoutBtn');
+    logoutBtn.onclick = () => location.reload();
 
-// Bot Status
-async function updateStatus() {
-  const status = await fetchAPI('/api/status');
-  if (!status) return;
-  document.getElementById('botStatusHeader').textContent = status.online ? 'Status: Online ✅' : 'Status: Offline ❌';
-  document.getElementById('botUptime').textContent = `${Math.floor(status.uptime/60)}m ${Math.floor(status.uptime%60)}s`;
-  document.getElementById('totalMessages').textContent = status.messages;
-  document.getElementById('mutedUsers').textContent = status.mutedUsers;
-}
+    let users = [];
+    let leaderboardData = {};
 
-// Leaderboard
-async function loadLeaderboard() {
-  const lb = await fetchAPI('/api/leaderboard');
-  if (!lb) return;
-  const tbody = document.getElementById('leaderboardBody');
-  tbody.innerHTML = '';
-  Object.entries(lb).sort((a,b)=>b[1]-a[1]).forEach(([id,count])=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${id}</td><td>${count}</td>`;
-    tbody.appendChild(tr);
-  });
-}
+    async function fetchServerData(){
+      const status = await fetch('/api/status', { headers:{Authorization:'Bearer admin123'} }).then(r=>r.json());
+      document.getElementById('totalMembers').innerText = status.users;
+      document.getElementById('mutedUsers').innerText = status.mutedUsers;
+      document.getElementById('onlineMembers').innerText = "N/A";
+      document.getElementById('botCount').innerText = "N/A";
 
-async function resetLeaderboard() {
-  await fetchAPI('/api/reset-leaderboard',{ method:'POST' });
-  loadLeaderboard();
-}
+      const leaderboard = await fetch('/api/leaderboard', { headers:{Authorization:'Bearer admin123'} }).then(r=>r.json());
+      leaderboardData = leaderboard;
+      renderLeaderboard(leaderboard);
+    }
 
-async function sendTestLeaderboard() {
-  await fetchAPI('/api/test-leaderboard',{ method:'POST' });
-  alert("Test leaderboard sent!");
-}
+    async function fetchUsers(){
+      // simulate fetching from bot; replace with proper API if added
+      const res = await fetch('/api/status', { headers:{Authorization:'Bearer admin123'} });
+      const data = await res.json();
+      users = Object.keys(leaderboardData).map(id=>({id, username:"User"+id, roles:["Member"], status:"online"}));
+      renderUsers(users);
+    }
 
-// Announcements
-async function sendAnnouncement() {
-  const channel = document.getElementById('announcementChannel').value;
-  const message = document.getElementById('announcementMessage').value;
-  if (!message) return alert("Message cannot be empty!");
-  await fetchAPI('/api/announcement',{
-    method:'POST',
-    headers:{ 'Content-Type':'application/json'},
-    body: JSON.stringify({channel,message})
-  });
-  alert("Announcement sent!");
-  document.getElementById('announcementMessage').value = '';
-}
+    function renderLeaderboard(data){
+      const ctx = document.getElementById('leaderboardChart').getContext('2d');
+      if(window.lbChart) window.lbChart.destroy();
+      const labels = Object.keys(data).slice(0,10);
+      const values = Object.values(data).slice(0,10);
+      window.lbChart = new Chart(ctx,{
+        type:'bar',
+        data:{labels, datasets:[{label:'Messages',data:values,backgroundColor:'#5865F2'}]},
+        options:{responsive:true, plugins:{legend:{display:false}}}
+      });
+    }
 
-// Logs
-async function loadLogs() {
-  const logs = await fetchAPI('/api/logs');
-  const ul = document.getElementById('logsList');
-  ul.innerHTML = '';
-  logs.forEach(l=>{
-    const li = document.createElement('li');
-    li.textContent = `[${new Date(l.time).toLocaleTimeString()}] ${l.message}`;
-    ul.appendChild(li);
-  });
-}
+    function renderUsers(list){
+      const tbody = document.querySelector('#usersTable tbody');
+      tbody.innerHTML = '';
+      list.forEach(u=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><img src="https://cdn.discordapp.com/embed/avatars/0.png" width="32" height="32"/></td>
+          <td>${u.username}</td>
+          <td>${u.roles.join(', ')}</td>
+          <td>${u.status}</td>
+          <td class="user-actions">
+            <button onclick="moderate('${u.id}','mute')">Mute</button>
+            <button onclick="moderate('${u.id}','unmute')">Unmute</button>
+            <button onclick="moderate('${u.id}','kick')">Kick</button>
+            <button onclick="moderate('${u.id}','ban')">Ban</button>
+            <button onclick="moderate('${u.id}','timeout')">Timeout</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
 
-// Moderation Users
-let allUsers = [];
+    function moderate(userId, action){
+      const reason = prompt(`Reason for ${action}?`) || "No reason provided";
+      fetch(`/api/moderation`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:'Bearer admin123' },
+        body: JSON.stringify({userId, action, reason})
+      }).then(r=>r.json()).then(r=>alert(r.message || "Done"));
+    }
 
-async function loadUsers() {
-  const guildStatus = await fetchAPI('/api/status');
-  if(!guildStatus) return;
-  allUsers = guildStatus.users || [];
-  renderUsers(allUsers);
-}
+    const searchInput = document.getElementById('searchUser');
+    searchInput.oninput = () => {
+      const filtered = users.filter(u => u.username.toLowerCase().includes(searchInput.value.toLowerCase()));
+      renderUsers(filtered);
+    }
 
-function renderUsers(users){
-  const tbody = document.getElementById('userListBody');
-  tbody.innerHTML = '';
-  users.forEach(u=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${u.id}</td>
-    <td>
-      <button onclick="moderate('${u.id}','mute')">Mute</button>
-      <button onclick="moderate('${u.id}','unmute')">Unmute</button>
-      <button onclick="moderate('${u.id}','kick')">Kick</button>
-      <button onclick="moderate('${u.id}','ban')">Ban</button>
-      <button onclick="moderate('${u.id}','timeout')">Timeout</button>
-    </td>`;
-    tbody.appendChild(tr);
-  });
-}
+    document.getElementById('resetLeaderboardBtn').onclick = () => {
+      fetch('/api/reset-leaderboard', {method:'POST',headers:{Authorization:'Bearer admin123'}})
+      .then(r=>r.json()).then(r=>{alert(r.message); fetchServerData();});
+    }
 
-function filterUsers() {
-  const query = document.getElementById('userSearch').value.toLowerCase();
-  renderUsers(allUsers.filter(u=> u.name.toLowerCase().includes(query) || u.id.toString().includes(query)));
-}
+    document.getElementById('announceLeaderboardBtn').onclick = () => {
+      const message = "🎉 Weekly leaderboard announced!";
+      fetch('/api/announcement', {method:'POST', headers:{Authorization:'Bearer admin123','Content-Type':'application/json'},body:JSON.stringify({channel:'leaderboard', message})})
+      .then(r=>r.json()).then(r=>alert(r.message));
+    }
 
-async function moderate(userId, action){
-  const reason = prompt(`Reason for ${action} on ${userId}?`) || 'No reason';
-  let duration = null;
-  if(action==='timeout') duration = prompt("Timeout duration in minutes", "10");
-  await fetchAPI('/api/moderate',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({userId, action, reason, duration})
-  });
-  alert(`${action} applied to ${userId}`);
-}
+    document.getElementById('sendAnnouncementBtn').onclick = () => {
+      const channel = document.getElementById('announcementChannel').value;
+      const message = document.getElementById('announcementMessage').value;
+      fetch('/api/announcement', {method:'POST', headers:{Authorization:'Bearer admin123','Content-Type':'application/json'},body:JSON.stringify({channel,message})})
+      .then(r=>r.json()).then(r=>alert(r.message));
+    }
 
-// Initialize Dashboard
-function initDashboard(){
-  updateStatus();
-  loadLeaderboard();
-  loadLogs();
-  loadUsers();
-  setInterval(updateStatus,5000);
-  setInterval(loadLeaderboard,10000);
-  setInterval(loadLogs,10000);
-}
-</script>
+    fetchServerData();
+    fetchUsers();
+  </script>
 </body>
 </html>
