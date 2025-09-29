@@ -2,150 +2,135 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>MHSCU Community Dashboard</title>
+<title>Community Dashboard</title>
 <style>
-  body { font-family: Arial; background: #f4f4f4; margin: 0; padding: 0; }
-  header { background: #0052cc; color: white; padding: 15px; text-align: center; }
-  #dashboard { padding: 20px; max-width: 1200px; margin: auto; }
-  .card { background: white; padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-  th { background: #f0f0f0; }
-  img.avatar { width: 40px; border-radius: 50%; vertical-align: middle; margin-right: 10px; }
-  input[type="text"] { padding: 8px; width: 100%; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; }
-  button { padding: 5px 10px; margin: 2px; border: none; border-radius: 4px; cursor: pointer; }
-  button.mute { background: #ffa500; color: white; }
-  button.unmute { background: #28a745; color: white; }
-  button.kick { background: #dc3545; color: white; }
-  button.ban { background: #800000; color: white; }
-  button.timeout { background: #ffc107; color: white; }
-  #logout { float: right; margin-top: -35px; margin-right: 20px; cursor: pointer; color: white; }
+  /* Basic Reset & Layout */
+  body { margin:0; font-family: Arial,sans-serif; background:#f4f4f4; transition: background 0.3s, color 0.3s;}
+  header { background:#0052cc; color:white; padding:15px; text-align:center; position:relative;}
+  #logout { position:absolute; right:20px; top:15px; cursor:pointer; }
+  #themeToggle { position:absolute; right:100px; top:15px; cursor:pointer; }
+  #dashboard { padding:20px; max-width:1400px; margin:auto; display:grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap:20px; }
+
+  .card { background:white; padding:15px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+  table { width:100%; border-collapse:collapse; }
+  th, td { padding:8px; border-bottom:1px solid #ddd; text-align:left; }
+  th { background:#f0f0f0; }
+  img.avatar { width:35px; border-radius:50%; vertical-align:middle; margin-right:8px; }
+  .role-badge { display:inline-block; padding:2px 6px; border-radius:4px; margin:1px; font-size:12px; color:white; }
+  .online { color:green; font-weight:bold; }
+  .offline { color:red; font-weight:bold; }
+
+  input[type="text"]{padding:6px;width:100%;margin-bottom:8px;border-radius:4px;border:1px solid #ccc;}
+  button {padding:4px 8px;margin:2px;border:none;border-radius:4px;cursor:pointer;}
+  button.mute{background:#ffa500;color:white;}
+  button.unmute{background:#28a745;color:white;}
+  button.kick{background:#dc3545;color:white;}
+  button.ban{background:#800000;color:white;}
+  button.timeout{background:#ffc107;color:white;}
+
+  /* Dark Mode */
+  body.dark { background:#181818; color:white; }
+  body.dark .card { background:#242424; }
+  body.dark th { background:#333; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>MHSCU Community Dashboard</h1>
+  <h1>Community Dashboard</h1>
+  <span id="themeToggle">🌙 Toggle Theme</span>
   <span id="logout">Logout</span>
 </header>
 
 <div id="dashboard">
+
+  <!-- Server Stats -->
   <div class="card">
-    <h2>Server Stats</h2>
+    <h2>Server Overview</h2>
     <p>Total Members: <span id="totalMembers">0</span></p>
     <p>Online Members: <span id="onlineMembers">0</span></p>
-    <p>Muted Members: <span id="mutedUsers">0</span></p>
     <p>Bots: <span id="botCount">0</span></p>
+    <p>Muted Users: <span id="mutedUsers">0</span></p>
+    <p>Recent Joins: <span id="recentJoins">0</span></p>
+    <p>Recent Leaves: <span id="recentLeaves">0</span></p>
+    <p>Active Voice Users: <span id="activeVC">0</span></p>
   </div>
 
+  <!-- Leaderboard -->
   <div class="card">
-    <h2>Leaderboard</h2>
+    <h2>Weekly Leaderboard</h2>
     <ul id="leaderboardList"></ul>
+    <button onclick="resetLeaderboard()">Reset Leaderboard</button>
   </div>
 
+  <!-- Top Contributors -->
   <div class="card">
+    <h2>Top Contributors</h2>
+    <div id="topContributors"></div>
+  </div>
+
+  <!-- Announcements -->
+  <div class="card">
+    <h2>Announcements</h2>
+    <input type="text" id="announcementInput" placeholder="Write announcement...">
+    <select id="announcementPing">
+      <option value="@everyone">Everyone</option>
+      <option value="@mods">Mods</option>
+    </select>
+    <button onclick="sendAnnouncement()">Send</button>
+    <ul id="announcementHistory"></ul>
+  </div>
+
+  <!-- Moderation Logs -->
+  <div class="card">
+    <h2>Moderation Logs</h2>
+    <select id="logFilter">
+      <option value="all">All Actions</option>
+      <option value="mute">Mute</option>
+      <option value="unmute">Unmute</option>
+      <option value="kick">Kick</option>
+      <option value="ban">Ban</option>
+      <option value="timeout">Timeout</option>
+    </select>
+    <button onclick="exportLogs()">Export CSV</button>
+    <table>
+      <thead><tr><th>Action</th><th>Target</th><th>By</th><th>Reason</th><th>Time</th></tr></thead>
+      <tbody id="logTable"></tbody>
+    </table>
+  </div>
+
+  <!-- Users -->
+  <div class="card" style="grid-column:1/-1;">
     <h2>Users</h2>
     <input type="text" id="userSearch" placeholder="Search users...">
     <table>
-      <thead>
-        <tr><th>User</th><th>Roles</th><th>Status</th><th>Actions</th></tr>
-      </thead>
+      <thead><tr><th>User</th><th>Roles</th><th>Status</th><th>Join Date</th><th>Actions</th></tr></thead>
       <tbody id="userTable"></tbody>
     </table>
   </div>
+
 </div>
 
 <script>
-const API_BASE = "http://localhost:3000/api"; // your bot API
+const API_BASE = 'https://mhscu-tools.onrender.com/';
+
 let DASHBOARD_PASSWORD = localStorage.getItem("dashboardPassword");
+let users = [], logs = [];
 
 // Login
 async function login() {
-  if(!DASHBOARD_PASSWORD) {
+  if(!DASHBOARD_PASSWORD){
     const pw = prompt("Enter dashboard password:");
-    if(pw !== 'admin123') { // set your password here
-      alert("Wrong password!");
-      document.body.innerHTML = "<h1 style='text-align:center;margin-top:50px;'>Unauthorized</h1>";
-      return false;
-    }
+    if(pw !== 'admin123'){ alert("Wrong password!"); document.body.innerHTML="<h1>Unauthorized</h1>"; return false;}
     localStorage.setItem("dashboardPassword", pw);
     DASHBOARD_PASSWORD = pw;
   }
   return true;
 }
 
-// Fetch server stats
-async function fetchServerStats() {
-  const res = await fetch(`${API_BASE}/status`, { headers: { Authorization: 'Bearer ' + DASHBOARD_PASSWORD } });
-  const data = await res.json();
-  document.getElementById('totalMembers').innerText = data.users;
-  document.getElementById('onlineMembers').innerText = data.onlineMembers;
-  document.getElementById('mutedUsers').innerText = data.mutedUsers;
-  document.getElementById('botCount').innerText = data.botCount;
-}
-
-// Fetch leaderboard
-async function fetchLeaderboard() {
-  const res = await fetch(`${API_BASE}/leaderboard`, { headers: { Authorization: 'Bearer ' + DASHBOARD_PASSWORD } });
-  const data = await res.json();
-  const list = document.getElementById('leaderboardList');
-  list.innerHTML = '';
-  Object.entries(data).sort((a,b)=>b[1]-a[1]).forEach(([id,count],i)=>{
-    const li = document.createElement('li');
-    li.innerText = `#${i+1}: ${id} - ${count} messages`;
-    list.appendChild(li);
-  });
-}
-
-// Fetch users
-let users = [];
-async function fetchUsers() {
-  const res = await fetch(`${API_BASE}/users`, { headers: { Authorization: 'Bearer ' + DASHBOARD_PASSWORD } });
-  users = await res.json();
-  renderUsers(users);
-}
-
-// Render users
-function renderUsers(list) {
-  const tbody = document.getElementById('userTable');
-  tbody.innerHTML = '';
-  list.forEach(u=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><img src="${u.avatar}" class="avatar">${u.username}</td>
-      <td>${u.roles.join(', ')}</td>
-      <td>${u.status}</td>
-      <td>
-        <button class="mute" onclick="moderate('${u.id}','mute')">Mute</button>
-        <button class="unmute" onclick="moderate('${u.id}','unmute')">Unmute</button>
-        <button class="kick" onclick="moderate('${u.id}','kick')">Kick</button>
-        <button class="ban" onclick="moderate('${u.id}','ban')">Ban</button>
-        <button class="timeout" onclick="moderate('${u.id}','timeout')">Timeout</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-// Search users
-document.getElementById('userSearch').addEventListener('input', (e)=>{
-  const term = e.target.value.toLowerCase();
-  const filtered = users.filter(u=>u.username.toLowerCase().includes(term));
-  renderUsers(filtered);
-});
-
-// Moderate user
-async function moderate(userId, action) {
-  const reason = prompt(`Reason for ${action}?`);
-  const res = await fetch(`${API_BASE}/moderation`, {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + DASHBOARD_PASSWORD },
-    body: JSON.stringify({ userId, action, reason })
-  });
-  const data = await res.json();
-  alert(data.message);
-  fetchServerStats();
-  fetchUsers();
+// Theme toggle
+document.getElementById('themeToggle').onclick = ()=>{
+  document.body.classList.toggle('dark');
 }
 
 // Logout
@@ -154,13 +139,144 @@ document.getElementById('logout').onclick = ()=>{
   location.reload();
 }
 
+// Fetch server stats
+async function fetchServerStats(){
+  const res = await fetch(`${API_BASE}/status`, {headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
+  const data = await res.json();
+  document.getElementById('totalMembers').innerText = data.users;
+  document.getElementById('onlineMembers').innerText = data.onlineMembers;
+  document.getElementById('mutedUsers').innerText = data.mutedUsers;
+  document.getElementById('botCount').innerText = data.botCount;
+  document.getElementById('recentJoins').innerText = data.recentJoins;
+  document.getElementById('recentLeaves').innerText = data.recentLeaves;
+  document.getElementById('activeVC').innerText = data.activeVC;
+}
+
+// Fetch leaderboard
+async function fetchLeaderboard(){
+  const res = await fetch(`${API_BASE}/leaderboard`, {headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
+  const data = await res.json();
+  const list = document.getElementById('leaderboardList');
+  list.innerHTML = '';
+  Object.entries(data).sort((a,b)=>b[1]-a[1]).forEach(([id,count],i)=>{
+    const li=document.createElement('li'); li.innerText=`#${i+1}: ${id} - ${count} points`; list.appendChild(li);
+  });
+}
+
+// Top contributors
+async function fetchTopContributors(){
+  const res = await fetch(`${API_BASE}/topcontributors`, {headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
+  const data = await res.json();
+  const div=document.getElementById('topContributors'); div.innerHTML='';
+  data.forEach(u=>{
+    const img=document.createElement('img'); img.src=u.avatar; img.title=u.username;
+    img.style.width='30px'; img.style.borderRadius='50%'; img.style.margin='2px';
+    div.appendChild(img);
+  });
+}
+
+// Users
+async function fetchUsers(){
+  const res=await fetch(`${API_BASE}/users`,{headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
+  users = await res.json();
+  renderUsers(users);
+}
+function renderUsers(list){
+  const tbody=document.getElementById('userTable');
+  tbody.innerHTML='';
+  list.forEach(u=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><img src="${u.avatar}" class="avatar">${u.username}${u.bot?' 🤖':''}</td>
+      <td>${u.roles.map(r=>`<span class="role-badge" style="background:${r.color}">${r.name}</span>`).join('')}</td>
+      <td class="${u.status}">${u.status}</td>
+      <td>${new Date(u.joinDate).toLocaleDateString()}</td>
+      <td>
+        <button class="mute" onclick="moderate('${u.id}','mute')">Mute</button>
+        <button class="unmute" onclick="moderate('${u.id}','unmute')">Unmute</button>
+        <button class="kick" onclick="moderate('${u.id}','kick')">Kick</button>
+        <button class="ban" onclick="moderate('${u.id}','ban')">Ban</button>
+        <button class="timeout" onclick="moderate('${u.id}','timeout')">Timeout</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+document.getElementById('userSearch').addEventListener('input',(e)=>{
+  const term=e.target.value.toLowerCase();
+  renderUsers(users.filter(u=>u.username.toLowerCase().includes(term)));
+});
+
+// Moderation
+async function moderate(userId, action){
+  const reason = prompt(`Reason for ${action}?`);
+  const res = await fetch(`${API_BASE}/moderation`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json', Authorization:'Bearer '+DASHBOARD_PASSWORD},
+    body:JSON.stringify({userId,action,reason})
+  });
+  const data = await res.json();
+  alert(data.message);
+  fetchServerStats(); fetchUsers(); fetchLogs();
+}
+
+// Moderation logs
+async function fetchLogs(){
+  const res = await fetch(`${API_BASE}/logs`,{headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
+  logs = await res.json();
+  renderLogs(logs);
+}
+function renderLogs(list){
+  const filter=document.getElementById('logFilter').value;
+  const tbody=document.getElementById('logTable');
+  tbody.innerHTML='';
+  list.filter(l=>filter==='all'||l.action===filter).forEach(l=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${l.action}</td><td>${l.target}</td><td>${l.by}</td><td>${l.reason}</td><td>${new Date(l.time).toLocaleString()}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+document.getElementById('logFilter').addEventListener('change',()=>renderLogs(logs));
+function exportLogs(){
+  let csv='Action,Target,By,Reason,Time\n';
+  logs.forEach(l=>csv+=`${l.action},${l.target},${l.by},"${l.reason}",${new Date(l.time).toLocaleString()}\n`);
+  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='moderation_logs.csv'; a.click();
+}
+
+// Announcements
+async function sendAnnouncement(){
+  const msg=document.getElementById('announcementInput').value;
+  const ping=document.getElementById('announcementPing').value;
+  if(!msg){ alert("Enter message"); return;}
+  const res=await fetch(`${API_BASE}/announce`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json', Authorization:'Bearer '+DASHBOARD_PASSWORD},
+    body:JSON.stringify({message:msg,ping})
+  });
+  const data=await res.json();
+  alert(data.message);
+  document.getElementById('announcementInput').value='';
+  fetchAnnouncements();
+}
+async function fetchAnnouncements(){
+  const res=await fetch(`${API_BASE}/announcements`,{headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
+  const data=await res.json();
+  const ul=document.getElementById('announcementHistory');
+  ul.innerHTML='';
+  data.forEach(a=>{const li=document.createElement('li'); li.innerText=`[${new Date(a.time).toLocaleString()}] ${a.ping} ${a.message}`; ul.appendChild(li);});
+}
+
+// Reset leaderboard
+async function resetLeaderboard(){
+  const res = await fetch(`${API_BASE}/leaderboard/reset`,{method:'POST',headers:{Authorization:'Bearer '+DASHBOARD_PASSWORD}});
+  const data = await res.json(); alert(data.message); fetchLeaderboard();
+}
+
 // Initial load
 login().then(ok=>{
   if(ok){
-    fetchServerStats();
-    fetchLeaderboard();
-    fetchUsers();
-    setInterval(()=>{ fetchServerStats(); fetchLeaderboard(); fetchUsers(); }, 15000); // refresh every 15s
+    fetchServerStats(); fetchLeaderboard(); fetchTopContributors(); fetchUsers(); fetchLogs(); fetchAnnouncements();
+    setInterval(()=>{ fetchServerStats(); fetchLeaderboard(); fetchTopContributors(); fetchUsers(); fetchLogs(); fetchAnnouncements(); },15000);
   }
 });
 </script>
