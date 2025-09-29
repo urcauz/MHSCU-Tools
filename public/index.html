@@ -1,244 +1,255 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MHSCU Mod Bot Dashboard</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #23272a;
-      color: #fff;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background: #2c2f33;
-      padding: 1rem;
-      text-align: center;
-      font-size: 1.5rem;
-      font-weight: bold;
-    }
-    .container {
-      padding: 1rem;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1rem;
-    }
-    .card {
-      background: #2c2f33;
-      border-radius: 10px;
-      padding: 1rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    }
-    .card h2 {
-      margin-top: 0;
-      font-size: 1.2rem;
-      border-bottom: 1px solid #444;
-      padding-bottom: 0.5rem;
-    }
-    button {
-      background: #5865f2;
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 5px;
-      cursor: pointer;
-      margin: 0.2rem;
-    }
-    button:hover {
-      background: #4752c4;
-    }
-    .danger { background: #d83c3e; }
-    .danger:hover { background: #a12b2d; }
-    .warning { background: #faa61a; }
-    .warning:hover { background: #c67f14; }
-    .success { background: #43b581; }
-    .success:hover { background: #2c8c60; }
-    input[type="text"], input[type="password"] {
-      padding: 0.5rem;
-      border-radius: 5px;
-      border: none;
-      width: 100%;
-      margin: 0.5rem 0;
-    }
-    /* User list */
-    .user-list {
-      max-height: 300px;
-      overflow-y: auto;
-    }
-    .user {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: #23272a;
-      margin: 0.3rem 0;
-      padding: 0.5rem;
-      border-radius: 5px;
-    }
-    .user img {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      margin-right: 0.5rem;
-    }
-    .user-info {
-      display: flex;
-      align-items: center;
-      flex-grow: 1;
-    }
-    /* Login screen */
-    #login-screen {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #23272a;
-    }
-    #login-box {
-      background: #2c2f33;
-      padding: 2rem;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-      text-align: center;
-      width: 300px;
-    }
-    #dashboard { display: none; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MHSCU Bot Dashboard</title>
+<style>
+  /* Base Styles */
+  * { box-sizing: border-box; margin:0; padding:0; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
+  body { background:#f5f7fa; color:#333; }
+  header { background:#34495e; color:white; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { font-weight:500; font-size:1.5rem; }
+  main { padding:2rem; display:none; }
+
+  /* Section Cards */
+  section { background:white; padding:1.5rem; margin-bottom:1.5rem; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+  h2 { font-size:1.2rem; margin-bottom:1rem; color:#2c3e50; }
+
+  /* Buttons & Inputs */
+  button { padding:0.5rem 1rem; border:none; border-radius:6px; cursor:pointer; background:#3498db; color:white; transition:0.2s; }
+  button:hover { background:#2980b9; }
+  input, select, textarea { width:100%; padding:0.5rem; margin:0.3rem 0; border:1px solid #ccc; border-radius:6px; font-size:0.95rem; }
+  textarea { resize:none; min-height:80px; }
+
+  /* Tables */
+  table { width:100%; border-collapse: collapse; margin-top:0.5rem; }
+  th, td { padding:0.6rem 0.8rem; border:1px solid #e1e4e8; text-align:left; }
+  th { background:#3498db; color:white; }
+  tbody tr:hover { background:#f1f6fb; }
+
+  /* Logs */
+  #logsList { list-style:none; max-height:200px; overflow:auto; padding-left:0.5rem; }
+
+  /* Password Prompt */
+  #passwordPrompt { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; }
+  #passwordPrompt div { background:white; padding:2rem; border-radius:10px; width:300px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.2);}
+  #passwordPrompt input { margin-bottom:1rem; }
+
+</style>
 </head>
 <body>
-  <!-- Login Screen -->
-  <div id="login-screen">
-    <div id="login-box">
-      <h2>🔒 Safelock Login</h2>
-      <input type="password" id="passwordInput" placeholder="Enter password"/>
-      <button onclick="checkPassword()">Login</button>
-      <p id="login-error" style="color:red;display:none;">Wrong password!</p>
-    </div>
+
+<!-- Password Overlay -->
+<div id="passwordPrompt">
+  <div>
+    <h2>Dashboard Login</h2>
+    <input type="password" id="dashboardPassword" placeholder="Enter password">
+    <button onclick="checkPassword()">Login</button>
+    <p id="passMsg" style="color:red; margin-top:0.5rem;"></p>
   </div>
+</div>
 
-  <!-- Dashboard -->
-  <div id="dashboard">
-    <header>Safelock Dashboard</header>
-    <div class="container">
-      <!-- Overview -->
-      <div class="card">
-        <h2>Overview</h2>
-        <p>Status: <span id="status">Unlocked</span></p>
-        <button class="danger" onclick="lockServer()">Lock</button>
-        <button class="success" onclick="unlockServer()">Unlock</button>
-      </div>
+<header>
+  <h1>MHSCU Bot Dashboard</h1>
+  <span id="botStatusHeader">Status: Loading...</span>
+</header>
 
-      <!-- Logs -->
-      <div class="card">
-        <h2>Logs</h2>
-        <div id="logs"></div>
-        <button class="warning" onclick="clearLogs()">Clear Logs</button>
-      </div>
+<main id="dashboard">
 
-      <!-- Analytics -->
-      <div class="card">
-        <h2>Analytics</h2>
-        <p>Coming soon: charts for locks, actions, activity.</p>
-      </div>
+  <!-- Bot Overview -->
+  <section>
+    <h2>Bot Overview</h2>
+    <p>Uptime: <span id="botUptime">0s</span></p>
+    <p>Total Messages: <span id="totalMessages">0</span></p>
+    <p>Muted Users: <span id="mutedUsers">0</span></p>
+  </section>
 
-      <!-- User Management -->
-      <div class="card">
-        <h2>User Management</h2>
-        <input type="text" id="userSearch" placeholder="Search users..." onkeyup="filterUsers()"/>
-        <div class="user-list" id="userList"></div>
-        <div style="margin-top:0.5rem;">
-          <button class="warning" onclick="massAction('mute')">Mute All</button>
-          <button class="warning" onclick="massAction('timeout')">Timeout All</button>
-          <button class="danger" onclick="massAction('kick')">Kick All</button>
-          <button class="danger" onclick="massAction('ban')">Ban All</button>
-        </div>
-      </div>
+  <!-- Leaderboard -->
+  <section>
+    <h2>Leaderboard</h2>
+    <table>
+      <thead>
+        <tr><th>User ID</th><th>Messages</th></tr>
+      </thead>
+      <tbody id="leaderboardBody"></tbody>
+    </table>
+    <div style="margin-top:0.5rem;">
+      <button onclick="resetLeaderboard()">Reset Leaderboard</button>
+      <button onclick="sendTestLeaderboard()">Send Test Leaderboard</button>
     </div>
-  </div>
+  </section>
 
-  <script>
-    // === Simple Password Protection ===
-    const dashboardPassword = "cauz123@.cauz123@."; // change to your password
+  <!-- Announcements -->
+  <section>
+    <h2>Send Announcement</h2>
+    <select id="announcementChannel">
+      <option value="leaderboard">Leaderboard Channel</option>
+      <option value="suggestions">Suggestions Channel</option>
+      <option value="logs">Logs Channel</option>
+    </select>
+    <textarea id="announcementMessage" placeholder="Type your announcement here..."></textarea>
+    <button onclick="sendAnnouncement()">Send</button>
+  </section>
 
-    function checkPassword() {
-      const input = document.getElementById("passwordInput").value;
-      if (input === dashboardPassword) {
-        document.getElementById("login-screen").style.display = "none";
-        document.getElementById("dashboard").style.display = "block";
-        loadUsers();
-      } else {
-        document.getElementById("login-error").style.display = "block";
-      }
-    }
+  <!-- Logs -->
+  <section>
+    <h2>Logs</h2>
+    <ul id="logsList"></ul>
+    <button onclick="loadLogs()">Refresh Logs</button>
+  </section>
 
-    // === Logs ===
-    function addLog(msg) {
-      const logs = document.getElementById("logs");
-      const entry = document.createElement("p");
-      entry.textContent = msg;
-      logs.prepend(entry);
-    }
-    function clearLogs() {
-      document.getElementById("logs").innerHTML = "";
-      addLog("Logs cleared");
-    }
+  <!-- Moderation -->
+  <section>
+    <h2>User Moderation</h2>
+    <input type="text" id="userSearch" placeholder="Search user by ID or name" oninput="filterUsers()">
+    <table>
+      <thead>
+        <tr><th>User ID</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="userListBody"></tbody>
+    </table>
+  </section>
 
-    // === Lock / Unlock ===
-    function lockServer() {
-      addLog("Server locked!");
-      document.getElementById("status").textContent = "Locked";
-      // fetch('/api/lock')
-    }
-    function unlockServer() {
-      addLog("Server unlocked!");
-      document.getElementById("status").textContent = "Unlocked";
-      // fetch('/api/unlock')
-    }
+</main>
 
-    // === User Management ===
-    const mockUsers = [
-      {id: "1", name: "Alice", avatar: "https://i.pravatar.cc/32?img=1"},
-      {id: "2", name: "Bob", avatar: "https://i.pravatar.cc/32?img=2"},
-      {id: "3", name: "Charlie", avatar: "https://i.pravatar.cc/32?img=3"}
-    ];
-    function loadUsers() {
-      const userList = document.getElementById("userList");
-      userList.innerHTML = "";
-      mockUsers.forEach(user => {
-        const div = document.createElement("div");
-        div.className = "user";
-        div.dataset.name = user.name.toLowerCase();
-        div.innerHTML = `
-          <div class="user-info">
-            <img src="${user.avatar}" alt="">
-            <span>${user.name}</span>
-          </div>
-          <div>
-            <button onclick="moderateUser('${user.id}','mute')">Mute</button>
-            <button class="warning" onclick="moderateUser('${user.id}','timeout')">Timeout</button>
-            <button class="warning" onclick="moderateUser('${user.id}','kick')">Kick</button>
-            <button class="danger" onclick="moderateUser('${user.id}','ban')">Ban</button>
-          </div>
-        `;
-        userList.appendChild(div);
-      });
-    }
-    function filterUsers() {
-      const query = document.getElementById("userSearch").value.toLowerCase();
-      document.querySelectorAll(".user").forEach(u => {
-        if (u.dataset.name.includes(query)) u.style.display = "flex";
-        else u.style.display = "none";
-      });
-    }
-    function moderateUser(id, action) {
-      addLog(`Action: ${action} on user ${id}`);
-      // fetch(`/api/moderation/${action}`, {method:"POST", body: JSON.stringify({id})})
-    }
-    function massAction(action) {
-      addLog(`Mass action: ${action} on all users`);
-      // fetch(`/api/moderation/mass/${action}`, {method:"POST"})
-    }
-  </script>
+<script>
+let AUTH_HEADER = null;
+
+function checkPassword() {
+  const passInput = document.getElementById('dashboardPassword').value;
+  if (!passInput) return;
+  AUTH_HEADER = "Bearer " + passInput;
+  document.getElementById('passwordPrompt').style.display = "none";
+  document.getElementById('dashboard').style.display = "block";
+  initDashboard();
+}
+
+async function fetchAPI(endpoint, options={}) {
+  if (!options.headers) options.headers = {};
+  if (AUTH_HEADER) options.headers['Authorization'] = AUTH_HEADER;
+  const res = await fetch(endpoint, options);
+  if (res.status === 401) {
+    alert("Incorrect password!");
+    location.reload();
+    return;
+  }
+  return res.json();
+}
+
+// Bot Status
+async function updateStatus() {
+  const status = await fetchAPI('/api/status');
+  if (!status) return;
+  document.getElementById('botStatusHeader').textContent = status.online ? 'Status: Online ✅' : 'Status: Offline ❌';
+  document.getElementById('botUptime').textContent = `${Math.floor(status.uptime/60)}m ${Math.floor(status.uptime%60)}s`;
+  document.getElementById('totalMessages').textContent = status.messages;
+  document.getElementById('mutedUsers').textContent = status.mutedUsers;
+}
+
+// Leaderboard
+async function loadLeaderboard() {
+  const lb = await fetchAPI('/api/leaderboard');
+  if (!lb) return;
+  const tbody = document.getElementById('leaderboardBody');
+  tbody.innerHTML = '';
+  Object.entries(lb).sort((a,b)=>b[1]-a[1]).forEach(([id,count])=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${id}</td><td>${count}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function resetLeaderboard() {
+  await fetchAPI('/api/reset-leaderboard',{ method:'POST' });
+  loadLeaderboard();
+}
+
+async function sendTestLeaderboard() {
+  await fetchAPI('/api/test-leaderboard',{ method:'POST' });
+  alert("Test leaderboard sent!");
+}
+
+// Announcements
+async function sendAnnouncement() {
+  const channel = document.getElementById('announcementChannel').value;
+  const message = document.getElementById('announcementMessage').value;
+  if (!message) return alert("Message cannot be empty!");
+  await fetchAPI('/api/announcement',{
+    method:'POST',
+    headers:{ 'Content-Type':'application/json'},
+    body: JSON.stringify({channel,message})
+  });
+  alert("Announcement sent!");
+  document.getElementById('announcementMessage').value = '';
+}
+
+// Logs
+async function loadLogs() {
+  const logs = await fetchAPI('/api/logs');
+  const ul = document.getElementById('logsList');
+  ul.innerHTML = '';
+  logs.forEach(l=>{
+    const li = document.createElement('li');
+    li.textContent = `[${new Date(l.time).toLocaleTimeString()}] ${l.message}`;
+    ul.appendChild(li);
+  });
+}
+
+// Moderation Users
+let allUsers = [];
+
+async function loadUsers() {
+  const guildStatus = await fetchAPI('/api/status');
+  if(!guildStatus) return;
+  allUsers = guildStatus.users || [];
+  renderUsers(allUsers);
+}
+
+function renderUsers(users){
+  const tbody = document.getElementById('userListBody');
+  tbody.innerHTML = '';
+  users.forEach(u=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${u.id}</td>
+    <td>
+      <button onclick="moderate('${u.id}','mute')">Mute</button>
+      <button onclick="moderate('${u.id}','unmute')">Unmute</button>
+      <button onclick="moderate('${u.id}','kick')">Kick</button>
+      <button onclick="moderate('${u.id}','ban')">Ban</button>
+      <button onclick="moderate('${u.id}','timeout')">Timeout</button>
+    </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function filterUsers() {
+  const query = document.getElementById('userSearch').value.toLowerCase();
+  renderUsers(allUsers.filter(u=> u.name.toLowerCase().includes(query) || u.id.toString().includes(query)));
+}
+
+async function moderate(userId, action){
+  const reason = prompt(`Reason for ${action} on ${userId}?`) || 'No reason';
+  let duration = null;
+  if(action==='timeout') duration = prompt("Timeout duration in minutes", "10");
+  await fetchAPI('/api/moderate',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({userId, action, reason, duration})
+  });
+  alert(`${action} applied to ${userId}`);
+}
+
+// Initialize Dashboard
+function initDashboard(){
+  updateStatus();
+  loadLeaderboard();
+  loadLogs();
+  loadUsers();
+  setInterval(updateStatus,5000);
+  setInterval(loadLeaderboard,10000);
+  setInterval(loadLogs,10000);
+}
+</script>
 </body>
 </html>
