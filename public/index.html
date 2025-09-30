@@ -1,297 +1,1421 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MHSCU Community Dashboard</title>
-<style>
-  body { font-family: Arial; margin:0; padding:0; background:#f0f2f5; color:#111; transition:0.3s; }
-  body.dark { background:#18191c; color:#e4e6eb; }
-  header { padding:20px; background:#5865f2; color:white; display:flex; justify-content:space-between; align-items:center; }
-  .dark header { background:#333; }
-  .container { padding:20px; max-width:1200px; margin:auto; }
-  h2 { margin-top:40px; }
-  table { width:100%; border-collapse:collapse; margin-top:10px; }
-  th, td { padding:8px; text-align:left; border-bottom:1px solid #ccc; }
-  .dark th, .dark td { border-color:#555; }
-  button { margin:2px; padding:5px 10px; cursor:pointer; }
-  .status { font-weight:bold; }
-  .login-container { display:flex; flex-direction:column; max-width:300px; margin:100px auto; }
-  .login-container input { margin-bottom:10px; padding:8px; }
-  .role-badge { padding:2px 6px; border-radius:4px; color:white; font-size:0.8em; }
-  .role-admin { background:#f04747; }
-  .role-moderator { background:#faa81a; }
-  .role-member { background:#43b581; }
-  .online-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; }
-  .online { background:#43b581; }
-  .offline { background:#747f8d; }
-  #topContributors td { font-weight:bold; }
-  canvas { max-width:100%; margin-top:20px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0e27;
+            color: #e4e4e7;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: #13172b;
+            border-right: 1px solid #1e2640;
+            padding: 24px 0;
+            overflow-y: auto;
+        }
+
+        .logo {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid #1e2640;
+            margin-bottom: 24px;
+        }
+
+        .logo h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+
+        .status-indicator.offline {
+            background: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+        }
+
+        .nav-menu {
+            padding: 0 12px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            margin-bottom: 4px;
+            border-radius: 8px;
+            color: #a1a1aa;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background: #1e2640;
+            color: #e4e4e7;
+        }
+
+        .nav-item.active {
+            background: #5865f2;
+            color: #fff;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            padding: 32px;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .header-bar h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #5865f2;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #4752c4;
+        }
+
+        .btn-secondary {
+            background: #2b2d31;
+            color: #e4e4e7;
+            border: 1px solid #3c3f47;
+        }
+
+        .btn-secondary:hover {
+            background: #35373d;
+        }
+
+        .btn-danger {
+            background: #da373c;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #b02e32;
+        }
+
+        .btn-warning {
+            background: #fb923c;
+            color: #fff;
+        }
+
+        .btn-warning:hover {
+            background: #ea580c;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: #13172b;
+            border: 1px solid #1e2640;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #71717a;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stat-icon.blue { background: rgba(88, 101, 242, 0.1); }
+        .stat-icon.green { background: rgba(34, 197, 94, 0.1); }
+        .stat-icon.purple { background: rgba(168, 85, 247, 0.1); }
+        .stat-icon.orange { background: rgba(251, 146, 60, 0.1); }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .card {
+            background: #13172b;
+            border: 1px solid #1e2640;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #71717a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #1e2640;
+        }
+
+        td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #1e2640;
+            color: #e4e4e7;
+            font-size: 14px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #e4e4e7;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 12px;
+            background: #1e2640;
+            border: 1px solid #2b2f47;
+            border-radius: 8px;
+            color: #e4e4e7;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: #5865f2;
+            background: #242842;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .log-container {
+            background: #0a0e27;
+            border: 1px solid #1e2640;
+            border-radius: 8px;
+            padding: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid #1e2640;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: #71717a;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .log-message {
+            color: #a1a1aa;
+        }
+
+        .alert {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            padding: 16px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-success {
+            background: #166534;
+            color: #fff;
+            border: 1px solid #15803d;
+        }
+
+        .alert-error {
+            background: #991b1b;
+            color: #fff;
+            border: 1px solid #b91c1c;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #71717a;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1001;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #13172b;
+            border: 1px solid #1e2640;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #71717a;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #1e2640;
+            color: #e4e4e7;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .badge-warning {
+            background: rgba(251, 146, 60, 0.1);
+            color: #fb923c;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #13172b;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2b2d31;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #35373d;
+        }
+    </style>
 </head>
 <body>
-<header>
-  <div>MHSCU Community Dashboard</div>
-  <div>
-    <button id="themeToggle">🌙 Toggle Dark/Light</button>
-    <span id="statusIndicator" class="status">Offline</span>
-  </div>
-</header>
+    <div class="sidebar">
+        <div class="logo">
+            <h1>
+                <span class="status-indicator" id="status-dot"></span>
+                Dashboard
+            </h1>
+        </div>
+        <nav class="nav-menu">
+            <a class="nav-item active" onclick="showSection('overview')">
+                <span>📊</span> Overview
+            </a>
+            <a class="nav-item" onclick="showSection('leaderboard')">
+                <span>🏆</span> Leaderboard
+            </a>
+            <a class="nav-item" onclick="showSection('moderation')">
+                <span>🛡️</span> Moderation
+            </a>
+            <a class="nav-item" onclick="showSection('announce')">
+                <span>📢</span> Announcements
+            </a>
+            <a class="nav-item" onclick="showSection('logs')">
+                <span>📋</span> Logs
+            </a>
+        </nav>
+    </div>
 
-<div class="container" id="dashboard" style="display:none;">
+    <div class="main-content">
+        <!-- Overview Section -->
+        <div id="overview-section">
+            <div class="header-bar">
+                <h2>Overview</h2>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" onclick="refreshData()">
+                        <span id="refresh-icon">🔄</span> Refresh
+                    </button>
+                    <button class="btn btn-primary" onclick="testLeaderboard()">
+                        🏆 Send Leaderboard
+                    </button>
+                </div>
+            </div>
 
-  <!-- Server Stats -->
-  <h2>Server Stats</h2>
-  <p>Total Members: <span id="totalMembers">0</span></p>
-  <p>Muted Users: <span id="mutedUsers">0</span></p>
-  <p>Bot Online: <span id="botOnline">❌</span></p>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Active Users</span>
+                        <div class="stat-icon green">👥</div>
+                    </div>
+                    <div class="stat-value" id="user-count">0</div>
+                </div>
 
-  <!-- Users Section -->
-  <h2>Users</h2>
-  <input type="text" id="searchUser" placeholder="Search username..." style="margin-bottom:10px;padding:5px;width:300px;">
-  <table id="usersTable">
-    <thead>
-      <tr><th>User</th><th>Role</th><th>Status</th><th>Messages</th><th>Actions</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Messages</span>
+                        <div class="stat-icon purple">💬</div>
+                    </div>
+                    <div class="stat-value" id="total-messages">0</div>
+                </div>
 
-  <!-- Top Contributors -->
-  <h2>Top Contributors</h2>
-  <table id="topContributors">
-    <thead><tr><th>User</th><th>Messages</th></tr></thead>
-    <tbody></tbody>
-  </table>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Uptime</span>
+                        <div class="stat-icon orange">⏱️</div>
+                    </div>
+                    <div class="stat-value" id="uptime">0h</div>
+                </div>
 
-  <!-- Leaderboard / Engagement -->
-  <h2>Leaderboard / Engagement</h2>
-  <table id="leaderboardTable">
-    <thead>
-      <tr><th>#</th><th>User</th><th>Messages</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <button id="resetLeaderboardBtn">Reset Leaderboard</button>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Muted Users</span>
+                        <div class="stat-icon blue">🔇</div>
+                    </div>
+                    <div class="stat-value" id="muted-count">0</div>
+                </div>
+            </div>
 
-  <!-- Moderation Logs -->
-  <h2>Moderation Logs</h2>
-  <table id="logsTable">
-    <thead>
-      <tr><th>Time</th><th>Action</th><th>User</th><th>Moderator</th><th>Reason</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Quick Actions</h3>
+                </div>
+                <div class="action-grid">
+                    <button class="btn btn-primary" onclick="testLeaderboard()">🏆 Send Leaderboard</button>
+                    <button class="btn btn-danger" onclick="resetLeaderboard()">🔄 Reset Leaderboard</button>
+                    <button class="btn btn-warning" onclick="openModal('kick-modal')">👢 Kick User</button>
+                    <button class="btn btn-danger" onclick="openModal('ban-modal')">🔨 Ban User</button>
+                    <button class="btn btn-warning" onclick="openModal('timeout-modal')">⏲️ Timeout User</button>
+                    <button class="btn btn-secondary" onclick="openModal('mute-modal')">🔇 Mute User</button>
+                </div>
+            </div>
+        </div>
 
-  <!-- Announcements Panel -->
-  <h2>Announcements</h2>
-  <textarea id="announcementText" rows="3" placeholder="Enter announcement..."></textarea>
-  <select id="announcementChannel">
-    <option value="general">General</option>
-    <option value="suggestions">Suggestions</option>
-    <option value="logs">Logs</option>
-  </select>
-  <button id="sendAnnouncementBtn">Send Announcement</button>
-  <ul id="announcementHistory"></ul>
+        <!-- Leaderboard Section -->
+        <div id="leaderboard-section" style="display: none;">
+            <div class="header-bar">
+                <h2>Leaderboard</h2>
+                <button class="btn btn-secondary" onclick="loadLeaderboard()">
+                    🔄 Refresh
+                </button>
+            </div>
 
-  <!-- Activity Chart -->
-  <h2>Activity Chart (Messages Over Time)</h2>
-  <canvas id="activityChart"></canvas>
+            <div class="card">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>User ID</th>
+                                <th>Messages</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body">
+                            <tr>
+                                <td colspan="3" class="empty-state">
+                                    <div class="empty-state-icon">📊</div>
+                                    <div>Loading leaderboard...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-</div>
+        <!-- Moderation Section -->
+        <div id="moderation-section" style="display: none;">
+            <div class="header-bar">
+                <h2>Moderation Tools</h2>
+            </div>
 
-<div class="login-container" id="loginContainer">
-  <h2>Login</h2>
-  <input type="password" id="dashboardPassword" placeholder="Enter password">
-  <button id="loginBtn">Login</button>
-  <p id="loginError" style="color:red;"></p>
-</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div class="card">
+                    <h3 class="card-title" style="margin-bottom: 16px;">Kick User</h3>
+                    <p style="color: #71717a; font-size: 14px; margin-bottom: 16px;">Remove a user from the server</p>
+                    <button class="btn btn-warning" onclick="openModal('kick-modal')">👢 Kick User</button>
+                </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-// dark mode
-document.getElementById('themeToggle').addEventListener('click', ()=>document.body.classList.toggle('dark'));
+                <div class="card">
+                    <h3 class="card-title" style="margin-bottom: 16px;">Ban User</h3>
+                    <p style="color: #71717a; font-size: 14px; margin-bottom: 16px;">Permanently ban a user</p>
+                    <button class="btn btn-danger" onclick="openModal('ban-modal')">🔨 Ban User</button>
+                </div>
 
-// localStorage login
-const PASSWORD = 'cauz123@.';
-const loginContainer = document.getElementById('loginContainer');
-const dashboard = document.getElementById('dashboard');
+                <div class="card">
+                    <h3 class="card-title" style="margin-bottom: 16px;">Unban User</h3>
+                    <p style="color: #71717a; font-size: 14px; margin-bottom: 16px;">Remove a ban from a user</p>
+                    <button class="btn btn-primary" onclick="openModal('unban-modal')">✅ Unban User</button>
+                </div>
 
-// Mock Data
-const members = [
-  {id:1, username:'Alice', role:'admin', messages:120, online:true},
-  {id:2, username:'Bob', role:'moderator', messages:95, online:true},
-  {id:3, username:'Charlie', role:'member', messages:60, online:false},
-  {id:4, username:'David', role:'member', messages:30, online:true},
-  {id:5, username:'Eve', role:'member', messages:10, online:false},
-];
+                <div class="card">
+                    <h3 class="card-title" style="margin-bottom: 16px;">Timeout User</h3>
+                    <p style="color: #71717a; font-size: 14px; margin-bottom: 16px;">Temporarily restrict a user</p>
+                    <button class="btn btn-warning" onclick="openModal('timeout-modal')">⏲️ Timeout User</button>
+                </div>
 
-let leaderboardData = members.map(m => ({username:m.username, messages:m.messages}));
-let logs = [
-  {time:Date.now()-3600000, action:'Mute', user:'Charlie', moderator:'Bob', reason:'Spamming'},
-  {time:Date.now()-7200000, action:'Kick', user:'Eve', moderator:'Alice', reason:'Rule violation'}
-];
-let announcements = [];
+                <div class="card">
+                    <h3 class="card-title" style="margin-bottom: 16px;">Remove Timeout</h3>
+                    <p style="color: #71717a; font-size: 14px; margin-bottom: 16px;">Remove timeout from a user</p>
+                    <button class="btn btn-primary" onclick="openModal('untimeout-modal')">⏱️ Remove Timeout</button>
+                </div>
 
-// Functions
-function showDashboard(){
-  loginContainer.style.display='none';
-  dashboard.style.display='block';
-  loadStats();
-  loadUsers();
-  loadLeaderboard();
-  loadTopContributors();
-  loadLogs();
-  loadAnnouncements();
-  loadActivityChart();
-}
+                <div class="card">
+                    <h3 class="card-title" style="margin-bottom: 16px;">Mute User</h3>
+                    <p style="color: #71717a; font-size: 14px; margin-bottom: 16px;">Mute a user (removes roles)</p>
+                    <button class="btn btn-secondary" onclick="openModal('mute-modal')">🔇 Mute User</button>
+                </div>
 
-// Server Stats
-function loadStats(){
-  document.getElementById('totalMembers').textContent = members.length;
-  document.getElementById('mutedUsers').textContent = logs.filter(l=>l.action==='Mute').length;
-  document.getElementById('botOnline').textContent = '✅';
-}
+                <div class="card">
+                    <h3 class="card-title" style="margin-bottom: 16px;">Unmute User</h3>
+                    <p style="color: #71717a; font-size: 14px; margin-bottom: 16px;">Unmute and restore roles</p>
+                    <button class="btn btn-primary" onclick="openModal('unmute-modal')">🔊 Unmute User</button>
+                </div>
 
-// Users Table
-function loadUsers(){
-  const tbody = document.querySelector('#usersTable tbody');
-  tbody.innerHTML='';
-  members.forEach(m=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${m.username}</td>
-                    <td><span class="role-badge role-${m.role}">${m.role}</span></td>
-                    <td><span class="online-dot ${m.online?'online':'offline'}"></span>${m.online?'Online':'Offline'}</td>
-                    <td>${m.messages}</td>
-                    <td>
-                      <button onclick="alert('Mute ${m.username}')">Mute</button>
-                      <button onclick="alert('Kick ${m.username}')">Kick</button>
-                      <button onclick="alert('Ban ${m.username}')">Ban</button>
-                    </td>`;
-    tbody.appendChild(tr);
-  });
-}
+                <div class="card">
+                    <h3 class="card-title" style="margin-bottom: 16px;">Clear Messages</h3>
+                    <p style="color: #71717a; font-size: 14px; margin-bottom: 16px;">Bulk delete messages</p>
+                    <button class="btn btn-danger" onclick="openModal('clear-modal')">🗑️ Clear Messages</button>
+                </div>
+            </div>
+        </div>
 
-// Top Contributors
-function loadTopContributors(){
-  const tbody = document.querySelector('#topContributors tbody');
-  tbody.innerHTML='';
-  const sorted = [...members].sort((a,b)=>b.messages-a.messages).slice(0,3);
-  sorted.forEach(u=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${u.username}</td><td>${u.messages}</td>`;
-    tbody.appendChild(tr);
-  });
-}
+        <!-- Announcements Section -->
+        <div id="announce-section" style="display: none;">
+            <div class="header-bar">
+                <h2>Send Announcement</h2>
+            </div>
 
-// Leaderboard
-function loadLeaderboard(){
-  const tbody = document.querySelector('#leaderboardTable tbody');
-  tbody.innerHTML='';
-  const sorted = [...leaderboardData].sort((a,b)=>b.messages-a.messages);
-  sorted.forEach((u,i)=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i+1}</td><td>${u.username}</td><td>${u.messages}</td>`;
-    tbody.appendChild(tr);
-  });
-}
+            <div class="card">
+                <div class="form-group">
+                    <label class="form-label">Channel</label>
+                    <select class="form-select" id="announcement-channel">
+                        <option value="leaderboard">Leaderboard Channel</option>
+                        <option value="suggestions">Suggestions Channel</option>
+                        <option value="logs">Logs Channel</option>
+                    </select>
+                </div>
 
-// Reset Leaderboard
-document.getElementById('resetLeaderboardBtn').addEventListener('click', ()=>{
-  if(!confirm("Reset leaderboard?")) return;
-  leaderboardData.forEach(u=>u.messages=0);
-  loadLeaderboard();
-  loadTopContributors();
-  alert('Leaderboard reset!');
-});
+                <div class="form-group">
+                    <label class="form-label">Message</label>
+                    <textarea class="form-textarea" id="announcement-text" placeholder="Enter your announcement..."></textarea>
+                </div>
 
-// Moderation Logs
-function loadLogs(){
-  const tbody = document.querySelector('#logsTable tbody');
-  tbody.innerHTML='';
-  logs.forEach(l=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${new Date(l.time).toLocaleString()}</td>
-                    <td>${l.action}</td>
-                    <td>${l.user}</td>
-                    <td>${l.moderator}</td>
-                    <td>${l.reason}</td>`;
-    tbody.appendChild(tr);
-  });
-}
+                <button class="btn btn-primary" onclick="sendAnnouncement()">
+                    📤 Send Announcement
+                </button>
+            </div>
+        </div>
 
-// Announcements
-function loadAnnouncements(){
-  const ul = document.getElementById('announcementHistory');
-  ul.innerHTML='';
-  announcements.forEach(a=>{
-    const li = document.createElement('li');
-    li.textContent = `[${new Date(a.time).toLocaleString()}][${a.channel}] ${a.message}`;
-    ul.appendChild(li);
-  });
-}
+        <!-- Logs Section -->
+        <div id="logs-section" style="display: none;">
+            <div class="header-bar">
+                <h2>Activity Logs</h2>
+                <button class="btn btn-secondary" onclick="clearLogs()">
+                    🗑️ Clear Logs
+                </button>
+            </div>
 
-document.getElementById('sendAnnouncementBtn').addEventListener('click', ()=>{
-  const message = document.getElementById('announcementText').value.trim();
-  const channel = document.getElementById('announcementChannel').value;
-  if(!message) return alert('Enter a message');
-  announcements.push({time:Date.now(), channel, message});
-  loadAnnouncements();
-  document.getElementById('announcementText').value='';
-  alert('Announcement sent!');
-});
+            <div class="card">
+                <div class="log-container" id="bot-logs">
+                    <div class="log-entry">
+                        <div class="log-time">Loading logs...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-// Search filter
-document.getElementById('searchUser').addEventListener('input', e=>{
-  const term = e.target.value.toLowerCase();
-  document.querySelectorAll('#usersTable tbody tr').forEach(tr=>{
-    tr.style.display = tr.innerText.toLowerCase().includes(term)?'':'none';
-  });
-});
+    <!-- Kick Modal -->
+    <div class="modal" id="kick-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Kick User</h3>
+                <button class="modal-close" onclick="closeModal('kick-modal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">User ID</label>
+                <input type="text" class="form-input" id="kick-userid" placeholder="Enter user ID">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Reason</label>
+                <input type="text" class="form-input" id="kick-reason" placeholder="Reason for kick">
+            </div>
+            <button class="btn btn-warning" onclick="executeKick()">👢 Kick User</button>
+        </div>
+    </div>
 
-// Login
-if(localStorage.getItem('dashboardPassword')===PASSWORD){
-  showDashboard();
-} else {
-  document.getElementById('loginBtn').addEventListener('click', ()=>{
-    const pass = document.getElementById('dashboardPassword').value;
-    if(pass===PASSWORD){
-      localStorage.setItem('dashboardPassword', pass);
-      showDashboard();
-    } else {
-      document.getElementById('loginError').textContent='Incorrect password';
-    }
-  });
-}
+    <!-- Ban Modal -->
+    <div class="modal" id="ban-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Ban User</h3>
+                <button class="modal-close" onclick="closeModal('ban-modal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">User ID</label>
+                <input type="text" class="form-input" id="ban-userid" placeholder="Enter user ID">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Reason</label>
+                <input type="text" class="form-input" id="ban-reason" placeholder="Reason for ban">
+            </div>
+            <button class="btn btn-danger" onclick="executeBan()">🔨 Ban User</button>
+        </div>
+    </div>
 
-// Activity Chart
-let chart;
-function loadActivityChart(){
-  const ctx = document.getElementById('activityChart').getContext('2d');
-  const labels = members.map(m=>m.username);
-  const data = members.map(m=>m.messages);
-  if(chart) chart.destroy();
-  chart = new Chart(ctx, {
-    type:'bar',
-    data: {
-      labels,
-      datasets:[{label:'Messages', data, backgroundColor:'#5865f2'}]
-    },
-    options:{
-      responsive:true,
-      plugins:{legend:{display:false}}
-    }
-  });
-}
+    <!-- Unban Modal -->
+    <div class="modal" id="unban-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Unban User</h3>
+                <button class="modal-close" onclick="closeModal('unban-modal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">User ID</label>
+                <input type="text" class="form-input" id="unban-userid" placeholder="Enter user ID">
+            </div>
+            <button class="btn btn-primary" onclick="executeUnban()">✅ Unban User</button>
+        </div>
+    </div>
 
-// Refresh every 10s
-setInterval(()=>{
-  loadStats();
-  loadUsers();
-  loadLeaderboard();
-  loadTopContributors();
-  loadLogs();
-  loadActivityChart();
-},10000);
-</script>
+    <!-- Timeout Modal -->
+    <div class="modal" id="timeout-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Timeout User</h3>
+                <button class="modal-close" onclick="closeModal('timeout-modal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">User ID</label>
+                <input type="text" class="form-input" id="timeout-userid" placeholder="Enter user ID">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Duration (minutes)</label>
+                <input type="number" class="form-input" id="timeout-duration" placeholder="10" min="1" max="1440">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Reason</label>
+                <input type="text" class="form-input" id="timeout-reason" placeholder="Reason for timeout">
+            </div>
+            <button class="btn btn-warning" onclick="executeTimeout()">⏲️ Timeout User</button>
+        </div>
+    </div>
+
+    <!-- Untimeout Modal -->
+    <div class="modal" id="untimeout-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Remove Timeout</h3>
+                <button class="modal-close" onclick="closeModal('untimeout-modal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">User ID</label>
+                <input type="text" class="form-input" id="untimeout-userid" placeholder="Enter user ID">
+            </div>
+            <button class="btn btn-primary" onclick="executeUntimeout()">⏱️ Remove Timeout</button>
+        </div>
+    </div>
+
+    <!-- Mute Modal -->
+    <div class="modal" id="mute-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Mute User</h3>
+                <button class="modal-close" onclick="closeModal('mute-modal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">User ID</label>
+                <input type="text" class="form-input" id="mute-userid" placeholder="Enter user ID">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Reason</label>
+                <input type="text" class="form-input" id="mute-reason" placeholder="Reason for mute">
+            </div>
+            <button class="btn btn-secondary" onclick="executeMute()">🔇 Mute User</button>
+        </div>
+    </div>
+
+    <!-- Unmute Modal -->
+    <div class="modal" id="unmute-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Unmute User</h3>
+                <button class="modal-close" onclick="closeModal('unmute-modal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">User ID</label>
+                <input type="text" class="form-input" id="unmute-userid" placeholder="Enter user ID">
+            </div>
+            <button class="btn btn-primary" onclick="executeUnmute()">🔊 Unmute User</button>
+        </div>
+    </div>
+
+    <!-- Clear Messages Modal -->
+    <div class="modal" id="clear-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Clear Messages</h3>
+                <button class="modal-close" onclick="closeModal('clear-modal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Channel ID</label>
+                <input type="text" class="form-input" id="clear-channelid" placeholder="Enter channel ID">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Amount (1-100)</label>
+                <input type="number" class="form-input" id="clear-amount" placeholder="10" min="1" max="100">
+            </div>
+            <button class="btn btn-danger" onclick="executeClear()">🗑️ Clear Messages</button>
+        </div>
+    </div>
+
+    <script>
+        let botOnline = false;
+        let leaderboardData = {};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+            setInterval(refreshData, 30000);
+        });
+
+        function showSection(section) {
+            document.querySelectorAll('[id$="-section"]').forEach(el => el.style.display = 'none');
+            document.getElementById(section + '-section').style.display = 'block';
+            
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.target.closest('.nav-item').classList.add('active');
+
+            if (section === 'leaderboard') loadLeaderboard();
+            if (section === 'logs') loadLogs();
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/status').catch(() => null);
+                if (response && response.ok) {
+                    const data = await response.json();
+                    updateBotStatus(true);
+                    updateStats(data);
+                } else {
+                    updateBotStatus(false);
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                updateBotStatus(false);
+            }
+        }
+
+        function updateBotStatus(online) {
+            const statusDot = document.getElementById('status-dot');
+            botOnline = online;
+            statusDot.className = 'status-indicator' + (online ? '' : ' offline');
+        }
+
+        function updateStats(data) {
+            document.getElementById('user-count').textContent = data.users || '0';
+            document.getElementById('total-messages').textContent = data.messages || '0';
+            document.getElementById('muted-count').textContent = data.mutedUsers || '0';
+            
+            const hours = Math.floor(data.uptime / 3600);
+            const minutes = Math.floor((data.uptime % 3600) / 60);
+            document.getElementById('uptime').textContent = `${hours}h ${minutes}m`;
+        }
+
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+
+                const tbody = document.getElementById('leaderboard-body');
+                tbody.innerHTML = '';
+
+                const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]).slice(0, 10);
+                const medals = ['🥇', '🥈', '🥉'];
+
+                if (sorted.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="empty-state"><div class="empty-state-icon">📊</div><div>No data available</div></td></tr>';
+                    return;
+                }
+
+                sorted.forEach(([userId, messages], index) => {
+                    const row = document.createElement('tr');
+                    const medal = index < 3 ? medals[index] : '';
+                    
+                    row.innerHTML = `
+                        <td><span class="rank-badge">${medal} #${index + 1}</span></td>
+                        <td>${userId}</td>
+                        <td>${messages}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                leaderboardData = data;
+            } catch (error) {
+                showAlert('Failed to load leaderboard', 'error');
+            }
+        }
+
+        async function testLeaderboard() {
+            if (!botOnline) {
+                showAlert('Bot is offline', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/test-leaderboard', { 
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer admin123'
+                    }
+                });
+                if (response.ok) {
+                    showAlert('Leaderboard sent successfully', 'success');
+                    addLog('🏆 Leaderboard test executed');
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showAlert('Failed to send leaderboard', 'error');
+            }
+        }
+
+        async function resetLeaderboard() {
+            if (!confirm('Reset the leaderboard? This cannot be undone.')) return;
+
+            try {
+                const response = await fetch('/api/reset-leaderboard', { 
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer admin123'
+                    }
+                });
+                if (response.ok) {
+                    showAlert('Leaderboard reset successfully', 'success');
+                    addLog('🔄 Leaderboard reset');
+                    loadLeaderboard();
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showAlert('Failed to reset leaderboard', 'error');
+            }
+        }
+
+        async function sendAnnouncement() {
+            const channel = document.getElementById('announcement-channel').value;
+            const text = document.getElementById('announcement-text').value.trim();
+
+            if (!text) {
+                showAlert('Please enter a message', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/announcement', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify({ channel, message: text })
+                });
+
+                if (response.ok) {
+                    showAlert('Announcement sent', 'success');
+                    document.getElementById('announcement-text').value = '';
+                    addLog(`📢 Announcement sent to ${channel}`);
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showAlert('Failed to send announcement', 'error');
+            }
+        }
+
+        // Moderation Actions
+        async function executeKick() {
+            const userId = document.getElementById('kick-userid').value.trim();
+            const reason = document.getElementById('kick-reason').value.trim() || 'No reason provided';
+
+            if (!userId) {
+                showAlert('Please enter a user ID', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/moderation/kick', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify({ userId, reason })
+                });
+
+                if (response.ok) {
+                    showAlert('User kicked successfully', 'success');
+                    closeModal('kick-modal');
+                    addLog(`👢 Kicked user ${userId}`);
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showAlert('Failed to kick user', 'error');
+            }
+        }
+
+        async function executeBan() {
+            const userId = document.getElementById('ban-userid').value.trim();
+            const reason = document.getElementById('ban-reason').value.trim() || 'No reason provided';
+
+            if (!userId) {
+                showAlert('Please enter a user ID', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/moderation/ban', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify({ userId, reason })
+                });
+
+                if (response.ok) {
+                    showAlert('User banned successfully', 'success');
+                    closeModal('ban-modal');
+                    addLog(`🔨 Banned user ${userId}`);
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showAlert('Failed to ban user', 'error');
+            }
+        }
+
+        async function executeUnban() {
+            const userId = document.getElementById('unban-userid').value.trim();
+
+            if (!userId) {
+                showAlert('Please enter a user ID', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/moderation/unban', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify({ userId })
+                });
+
+                if (response.ok) {
+                    showAlert('User unbanned successfully', 'success');
+                    closeModal('unban-modal');
+                    addLog(`✅ Unbanned user ${userId}`);
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showAlert('Failed to unban user', 'error');
+            }
+        }
+
+        async function executeTimeout() {
+            const userId = document.getElementById('timeout-userid').value.trim();
+            const duration = parseInt(document.getElementById('timeout-duration').value) || 10;
+            const reason = document.getElementById('timeout-reason').value.trim() || 'No reason provided';
+
+            if (!userId) {
+                showAlert('Please enter a user ID', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/moderation/timeout', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify({ userId, duration, reason })
+                });
+
+                if (response.ok) {
+                    showAlert(`User timed out for ${duration} minutes`, 'success');
+                    closeModal('timeout-modal');
+                    addLog(`⏲️ Timed out user ${userId} for ${duration}m`);
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showAlert('Failed to timeout user', 'error');
+            }
+        }
+
+        async function executeUntimeout() {
+            const userId = document.getElementById('untimeout-userid').value.trim();
+
+            if (!userId) {
+                showAlert('Please enter a user ID', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/moderation/untimeout', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify({ userId })
+                });
+
+                if (response.ok) {
+                    showAlert('Timeout removed successfully', 'success');
+                    closeModal('untimeout-modal');
+                    addLog(`⏱️ Removed timeout from user ${userId}`);
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showAlert('Failed to remove timeout', 'error');
+            }
+        }
+
+        async function executeMute() {
+            const userId = document.getElementById('mute-userid').value.trim();
+            const reason = document.getElementById('mute-reason').value.trim() || 'No reason provided';
+
+            if (!userId) {
+                showAlert('Please enter a user ID', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/moderation/mute', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify({ userId, reason })
+                });
+
+                if (response.ok) {
+                    showAlert('User muted successfully', 'success');
+                    closeModal('mute-modal');
+                    addLog(`🔇 Muted user ${userId}`);
+                    refreshData();
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showAlert('Failed to mute user', 'error');
+            }
+        }
+
+        async function executeUnmute() {
+            const userId = document.getElementById('unmute-userid').value.trim();
+
+            if (!userId) {
+                showAlert('Please enter a user ID', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/moderation/unmute', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify({ userId })
+                });
+
+                if (response.ok) {
+                    showAlert('User unmuted successfully', 'success');
+                    closeModal('unmute-modal');
+                    addLog(`🔊 Unmuted user ${userId}`);
+                    refreshData();
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showAlert('Failed to unmute user', 'error');
+            }
+        }
+
+        async function executeClear() {
+            const channelId = document.getElementById('clear-channelid').value.trim();
+            const amount = parseInt(document.getElementById('clear-amount').value) || 10;
+
+            if (!channelId) {
+                showAlert('Please enter a channel ID', 'error');
+                return;
+            }
+
+            if (amount < 1 || amount > 100) {
+                showAlert('Amount must be between 1 and 100', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/moderation/clear', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify({ channelId, amount })
+                });
+
+                if (response.ok) {
+                    showAlert(`Cleared ${amount} messages`, 'success');
+                    closeModal('clear-modal');
+                    addLog(`🗑️ Cleared ${amount} messages from channel`);
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showAlert('Failed to clear messages', 'error');
+            }
+        }
+
+        async function loadLogs() {
+            try {
+                const response = await fetch('/api/logs');
+                const logs = await response.json();
+                
+                const container = document.getElementById('bot-logs');
+                container.innerHTML = '';
+                
+                logs.forEach(log => {
+                    const entry = document.createElement('div');
+                    entry.className = 'log-entry';
+                    entry.innerHTML = `
+                        <div class="log-time">${new Date(log.time).toLocaleString()}</div>
+                        <div class="log-message">${log.message}</div>
+                    `;
+                    container.appendChild(entry);
+                });
+            } catch (error) {
+                console.error('Error loading logs:', error);
+            }
+        }
+
+        function refreshData() {
+            const icon = document.getElementById('refresh-icon');
+            icon.innerHTML = '<span class="spinner"></span>';
+            
+            loadDashboardData();
+            
+            setTimeout(() => {
+                icon.textContent = '🔄';
+                showAlert('Dashboard refreshed', 'success');
+            }, 1000);
+        }
+
+        function clearLogs() {
+            document.getElementById('bot-logs').innerHTML = '<div class="log-entry"><div class="log-time">Logs cleared</div></div>';
+            showAlert('Logs cleared', 'success');
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => alertDiv.remove(), 4000);
+        }
+
+        function addLog(message) {
+            const container = document.getElementById('bot-logs');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <div class="log-time">${new Date().toLocaleString()}</div>
+                <div class="log-message">${message}</div>
+            `;
+            
+            container.insertBefore(entry, container.firstChild);
+            
+            const logs = container.querySelectorAll('.log-entry');
+            if (logs.length > 20) logs[logs.length - 1].remove();
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        }
+    </script>
 </body>
 </html>

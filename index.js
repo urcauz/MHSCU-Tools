@@ -742,6 +742,196 @@ app.get("/api/logs", (req, res) => {
   ]);
 });
 
+// Moderation API Endpoints
+app.post("/api/moderation/kick", requireAuth, async (req, res) => {
+  try {
+    const { userId, reason } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
+    
+    await member.kick(reason || "Kicked via dashboard");
+    res.json({ success: true, message: "User kicked successfully" });
+  } catch (error) {
+    console.error("API kick error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/moderation/ban", requireAuth, async (req, res) => {
+  try {
+    const { userId, reason } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
+    
+    await member.ban({ reason: reason || "Banned via dashboard" });
+    res.json({ success: true, message: "User banned successfully" });
+  } catch (error) {
+    console.error("API ban error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/moderation/unban", requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    await guild.members.unban(userId);
+    res.json({ success: true, message: "User unbanned successfully" });
+  } catch (error) {
+    console.error("API unban error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/moderation/timeout", requireAuth, async (req, res) => {
+  try {
+    const { userId, duration, reason } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
+    
+    await member.timeout((duration || 10) * 60 * 1000, reason || "Timed out via dashboard");
+    res.json({ success: true, message: "User timed out successfully" });
+  } catch (error) {
+    console.error("API timeout error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/moderation/untimeout", requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
+    
+    await member.timeout(null);
+    res.json({ success: true, message: "Timeout removed successfully" });
+  } catch (error) {
+    console.error("API untimeout error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/moderation/mute", requireAuth, async (req, res) => {
+  try {
+    const { userId, reason } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
+    
+    if (mutedUserRoles.has(userId)) {
+      throw new Error("User is already muted");
+    }
+    
+    let muteRole = guild.roles.cache.find((r) => r.name === "Muted");
+    
+    if (!muteRole) {
+      muteRole = await guild.roles.create({
+        name: "Muted",
+        color: "Grey",
+        permissions: [],
+      });
+      
+      const channels = guild.channels.cache;
+      for (const [, channel] of channels) {
+        try {
+          await channel.permissionOverwrites.edit(muteRole, {
+            SendMessages: false,
+            Speak: false,
+            AddReactions: false,
+          });
+        } catch (err) {
+          console.error(`Failed to set permissions for channel ${channel.name}:`, err);
+        }
+      }
+    }
+    
+    const userRoles = member.roles.cache
+      .filter(role => role.id !== guild.id)
+      .map(role => role.id);
+    
+    mutedUserRoles.set(userId, userRoles);
+    await member.roles.set([muteRole.id]);
+    
+    res.json({ success: true, message: "User muted successfully", rolesRemoved: userRoles.length });
+  } catch (error) {
+    console.error("API mute error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/moderation/unmute", requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
+    
+    if (!mutedUserRoles.has(userId)) {
+      throw new Error("User wasn't muted with role storage system");
+    }
+    
+    const storedRoles = mutedUserRoles.get(userId);
+    const muteRole = guild.roles.cache.find((r) => r.name === "Muted");
+    
+    const validRoles = storedRoles.filter(roleId => {
+      const role = guild.roles.cache.get(roleId);
+      return role && (!muteRole || role.id !== muteRole.id);
+    });
+    
+    await member.roles.set(validRoles);
+    mutedUserRoles.delete(userId);
+    
+    res.json({ success: true, message: "User unmuted successfully", rolesRestored: validRoles.length });
+  } catch (error) {
+    console.error("API unmute error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/moderation/clear", requireAuth, async (req, res) => {
+  try {
+    const { channelId, amount } = req.body;
+    
+    const channel = await client.channels.fetch(channelId);
+    if (!channel) throw new Error("Channel not found");
+    
+    if (amount < 1 || amount > 100) {
+      throw new Error("Amount must be between 1 and 100");
+    }
+    
+    await channel.bulkDelete(amount, true);
+    res.json({ success: true, message: `Deleted ${amount} messages` });
+  } catch (error) {
+    console.error("API clear error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get("/health", (req, res) => {
   res.json({ 
     status: "healthy", 
@@ -787,20 +977,5 @@ process.on("SIGINT", () => {
   client.destroy();
   process.exit(0);
 });
-app.get("/api/members", async (req, res) => {
-  const guild = client.guilds.cache.get("YOUR_GUILD_ID");
-  if (!guild) return res.status(404).json({ error: "Guild not found" });
-  await guild.members.fetch(); // fetch all members from Discord
-  const members = guild.members.cache.map(member => ({
-    id: member.id,
-    username: member.user.username,
-    tag: member.user.tag,
-    avatar: member.user.displayAvatarURL(),
-    roles: member.roles.cache.map(r => r.name),
-    bot: member.user.bot,
-    joinedAt: member.joinedAt,
-    presence: member.presence?.status || "offline"
-  }));
-  res.json(members);
-});
+
 client.login(process.env.TOKEN);
