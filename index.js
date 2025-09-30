@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
+// Dashboard Authentication (Simple)
 import fs from "fs";
 import express from "express";
 import dotenv from "dotenv";
