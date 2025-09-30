@@ -1,6 +1,70 @@
-// Dashboard Authentication (for admin endpoints only)
+import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
+import fs from "fs";
+import express from "express";
+import dotenv from "dotenv";
+import cron from "node-cron";
+import path from "path";
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config();
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences,
+  ],
+});
+
+const app = express();
+app.use(express.json());
+app.use(express.static('public'));
+
+const PREFIX = "!";
+const CHANNEL_ID = process.env.LEADERBOARD_CHANNEL_ID;
+const SUGGESTIONS_CHANNEL_ID = process.env.SUGGESTIONS_CHANNEL_ID;
+const WINNER_ROLE_ID = process.env.WINNER_ROLE_ID;
+const LOGS_CHANNEL_ID = process.env.LOGS_CHANNEL_ID;
+const DATA_FILE = "./leaderboard.json";
 const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'admin123';
 
+// -------------------- Data Management --------------------
+let leaderboard = {};
+let lastSave = Date.now();
+const SAVE_INTERVAL = 30000; // Save every 30 seconds instead of every message
+
+// Command cooldowns and mute role storage
+const cooldowns = new Map();
+const mutedUserRoles = new Map();
+const COOLDOWN_TIME = 3000; // 3 seconds
+
+// Load leaderboard data
+if (fs.existsSync(DATA_FILE)) {
+  try {
+    const raw = fs.readFileSync(DATA_FILE, "utf8");
+    leaderboard = raw ? JSON.parse(raw) : {};
+    console.log(`✅ Loaded leaderboard data (${Object.keys(leaderboard).length} users)`);
+  } catch (err) {
+    console.error("❌ Failed to load leaderboard.json, starting fresh.", err);
+    leaderboard = {};
+  }
+}
+
+function saveData(force = false) {
+  if (!force && Date.now() - lastSave < SAVE_INTERVAL) return;
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(leaderboard, null, 2));
+    lastSave = Date.now();
+  } catch (err) {
+    console.error("❌ Failed to save leaderboard:", err);
+  }
+}
+
+// -------------------- Auth Middleware --------------------
 function requireAuth(req, res, next) {
   const auth = req.headers.authorization;
   
@@ -11,16 +75,24 @@ function requireAuth(req, res, next) {
   }
 }
 
+// -------------------- Express Routes --------------------
 // Main Routes
 app.get("/", (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html>
-    <head><title>Server Stats Dashboard</title></head>
+    <head><title>Discord Bot Dashboard</title></head>
     <body style="font-family: Arial; padding: 20px; background: #f0f0f0;">
-      <h1>🤖 Server Stats Dashboard</h1>
+      <h1>🤖 Discord Bot Dashboard</h1>
       <p>Bot Status: <span style="color: ${client.isReady() ? 'green' : 'red'};">${client.isReady() ? '✅ Online' : '❌ Offline'}</span></p>
-      <p>Access the dashboard: <a href="/dashboard">Dashboard</a></p>
+      <p>Access the full dashboard: <a href="/dashboard">Dashboard</a></p>
+      <h3>API Endpoints:</h3>
+      <ul>
+        <li><a href="/api/status">/api/status</a> - Bot status</li>
+        <li><a href="/api/leaderboard">/api/leaderboard</a> - Current leaderboard</li>
+        <li><a href="/health">/health</a> - Health check</li>
+      </ul>
+      <p><strong>Note:</strong> Save the dashboard HTML from the artifact as <code>public/index.html</code> to access the full dashboard.</p>
     </body>
     </html>
   `);
@@ -39,7 +111,8 @@ app.get("/api/status", (req, res) => {
     users: Object.keys(leaderboard).length,
     messages: Object.values(leaderboard).reduce((a, b) => a + b, 0),
     uptime: process.uptime(),
-    botTag: client.user ? client.user.tag : "Unknown"
+    botTag: client.user ? client.user.tag : "Unknown",
+    mutedUsers: mutedUserRoles.size
   });
 });
 
@@ -130,129 +203,230 @@ app.post("/api/announcement", requireAuth, async (req, res) => {
   }
 });
 
-// Members endpoint
-app.get("/api/members", requireAuth, async (req, res) => {
+app.get("/api/logs", (req, res) => {
+  // Return basic logs - in production, you'd store these in a database
+  res.json([
+    { time: new Date().toISOString(), message: "✅ Bot started successfully" },
+    { time: new Date(Date.now() - 300000).toISOString(), message: `📊 Loaded leaderboard data (${Object.keys(leaderboard).length} users)` },
+    { time: new Date(Date.now() - 600000).toISOString(), message: `🔄 Bot uptime: ${Math.floor(process.uptime() / 60)} minutes` }
+  ]);
+});
+
+// Moderation API Endpoints
+app.post("/api/moderation/kick", requireAuth, async (req, res) => {
   try {
+    const { userId, reason } = req.body;
+    
     const guild = client.guilds.cache.first();
     if (!guild) throw new Error("Guild not found");
     
-    await guild.members.fetch();
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
     
-    const members = guild.members.cache.map(member => ({
-      id: member.user.id,
-      username: member.user.username,
-      discriminator: member.user.discriminator,
-      bot: member.user.bot,
-      joinedAt: member.joinedAt
-    }));
-    
-    res.json(members);
+    await member.kick(reason || "Kicked via dashboard");
+    res.json({ success: true, message: "User kicked successfully" });
   } catch (error) {
-    console.error("API members error:", error);
+    console.error("API kick error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Main Routes
-app.get("/", (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head><title>Discord Bot Dashboard</title></head>
-    <body style="font-family: Arial; padding: 20px; background: #f0f0f0;">
-      <h1>🤖 Discord Bot Dashboard</h1>
-      <p>Bot Status: <span style="color: ${client.isReady() ? 'green' : 'red'};">${client.isReady() ? '✅ Online' : '❌ Offline'}</span></p>
-      <p>Access the full dashboard: <a href="/dashboard">Dashboard</a></p>
-      <h3>API Endpoints:</h3>
-      <ul>
-        <li><a href="/api/status">/api/status</a> - Bot status</li>
-        <li><a href="/api/leaderboard">/api/leaderboard</a> - Current leaderboard</li>
-        <li><a href="/health">/health</a> - Health check</li>
-      </ul>
-      <p><strong>Note:</strong> Save the dashboard HTML from the artifact as <code>public/index.html</code> to access the full dashboard.</p>
-    </body>
-    </html>
-  `);
+app.post("/api/moderation/ban", requireAuth, async (req, res) => {
+  try {
+    const { userId, reason } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
+    
+    await member.ban({ reason: reason || "Banned via dashboard" });
+    res.json({ success: true, message: "User banned successfully" });
+  } catch (error) {
+    console.error("API ban error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-app.get("/dashboard", (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.post("/api/moderation/unban", requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    await guild.members.unban(userId);
+    res.json({ success: true, message: "User unbanned successfully" });
+  } catch (error) {
+    console.error("API unban error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-// API Routes
-app.get("/api/status", requireAuth, (req, res) => {
-  const guild = client.guilds.cache.first();
-  res.json({
-    online: client.isReady(),
-    members: guild ? guild.memberCount : 0,
-    users: Object.keys(leaderboard).length,
-    messages: Object.values(leaderboard).reduce((a, b) => a + b, 0),
+app.post("/api/moderation/timeout", requireAuth, async (req, res) => {
+  try {
+    const { userId, duration, reason } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
+    
+    await member.timeout((duration || 10) * 60 * 1000, reason || "Timed out via dashboard");
+    res.json({ success: true, message: "User timed out successfully" });
+  } catch (error) {
+    console.error("API timeout error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/moderation/untimeout", requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
+    
+    await member.timeout(null);
+    res.json({ success: true, message: "Timeout removed successfully" });
+  } catch (error) {
+    console.error("API untimeout error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/moderation/mute", requireAuth, async (req, res) => {
+  try {
+    const { userId, reason } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
+    
+    if (mutedUserRoles.has(userId)) {
+      throw new Error("User is already muted");
+    }
+    
+    let muteRole = guild.roles.cache.find((r) => r.name === "Muted");
+    
+    if (!muteRole) {
+      muteRole = await guild.roles.create({
+        name: "Muted",
+        color: "Grey",
+        permissions: [],
+      });
+      
+      const channels = guild.channels.cache;
+      for (const [, channel] of channels) {
+        try {
+          await channel.permissionOverwrites.edit(muteRole, {
+            SendMessages: false,
+            Speak: false,
+            AddReactions: false,
+          });
+        } catch (err) {
+          console.error(`Failed to set permissions for channel ${channel.name}:`, err);
+        }
+      }
+    }
+    
+    const userRoles = member.roles.cache
+      .filter(role => role.id !== guild.id)
+      .map(role => role.id);
+    
+    mutedUserRoles.set(userId, userRoles);
+    await member.roles.set([muteRole.id]);
+    
+    res.json({ success: true, message: "User muted successfully", rolesRemoved: userRoles.length });
+  } catch (error) {
+    console.error("API mute error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/moderation/unmute", requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    const member = await guild.members.fetch(userId);
+    if (!member) throw new Error("Member not found");
+    
+    if (!mutedUserRoles.has(userId)) {
+      throw new Error("User wasn't muted with role storage system");
+    }
+    
+    const storedRoles = mutedUserRoles.get(userId);
+    const muteRole = guild.roles.cache.find((r) => r.name === "Muted");
+    
+    const validRoles = storedRoles.filter(roleId => {
+      const role = guild.roles.cache.get(roleId);
+      return role && (!muteRole || role.id !== muteRole.id);
+    });
+    
+    await member.roles.set(validRoles);
+    mutedUserRoles.delete(userId);
+    
+    res.json({ success: true, message: "User unmuted successfully", rolesRestored: validRoles.length });
+  } catch (error) {
+    console.error("API unmute error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/moderation/clear", requireAuth, async (req, res) => {
+  try {
+    const { channelId, amount } = req.body;
+    
+    const channel = await client.channels.fetch(channelId);
+    if (!channel) throw new Error("Channel not found");
+    
+    if (amount < 1 || amount > 100) {
+      throw new Error("Amount must be between 1 and 100");
+    }
+    
+    await channel.bulkDelete(amount, true);
+    res.json({ success: true, message: `Deleted ${amount} messages` });
+  } catch (error) {
+    console.error("API clear error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: "healthy", 
     uptime: process.uptime(),
-    botTag: client.user ? client.user.tag : "Unknown",
-    mutedUsers: mutedUserRoles.size
+    users: Object.keys(leaderboard).length,
+    botOnline: client.isReady(),
+    memory: process.memoryUsage()
   });
-});import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
-import fs from "fs";
-import express from "express";
-import dotenv from "dotenv";
-import cron from "node-cron";
-import path from "path";
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-dotenv.config();
-
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildPresences,
-  ],
 });
 
-const PREFIX = "!";
-const CHANNEL_ID = process.env.LEADERBOARD_CHANNEL_ID;
-const SUGGESTIONS_CHANNEL_ID = process.env.SUGGESTIONS_CHANNEL_ID;
-const WINNER_ROLE_ID = process.env.WINNER_ROLE_ID;
-const LOGS_CHANNEL_ID = process.env.LOGS_CHANNEL_ID;
-const DATA_FILE = "./leaderboard.json";
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error("Express error:", error);
+  res.status(500).json({ success: false, error: "Internal server error" });
+});
 
-// -------------------- Enhanced Data Management --------------------
-let leaderboard = {};
-let lastSave = Date.now();
-const SAVE_INTERVAL = 30000; // Save every 30 seconds instead of every message
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🌐 Dashboard server running on port ${PORT}`);
+  console.log(`📊 Access dashboard at: http://localhost:${PORT}/dashboard`);
+});
 
-// Command cooldowns and mute role storage
-const cooldowns = new Map();
-const mutedUserRoles = new Map();
-const COOLDOWN_TIME = 3000; // 3 seconds
+// -------------------- Discord Bot Logic --------------------
 
-// Load leaderboard data
-if (fs.existsSync(DATA_FILE)) {
-  try {
-    const raw = fs.readFileSync(DATA_FILE, "utf8");
-    leaderboard = raw ? JSON.parse(raw) : {};
-    console.log(`✅ Loaded leaderboard data (${Object.keys(leaderboard).length} users)`);
-  } catch (err) {
-    console.error("❌ Failed to load leaderboard.json, starting fresh.", err);
-    leaderboard = {};
-  }
-}
-
-function saveData(force = false) {
-  if (!force && Date.now() - lastSave < SAVE_INTERVAL) return;
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(leaderboard, null, 2));
-    lastSave = Date.now();
-  } catch (err) {
-    console.error("❌ Failed to save leaderboard:", err);
-  }
-}
-
-// -------------------- Enhanced Role Management --------------------
+// Remove winner role from all members
 async function removeWinnerRole(guild) {
   try {
     const role = await guild.roles.fetch(WINNER_ROLE_ID);
@@ -284,7 +458,6 @@ async function giveWinnerRole(guild, winnerId) {
   }
 }
 
-// -------------------- Enhanced Leaderboard Function --------------------
 async function sendLeaderboard() {
   try {
     const channel = await client.channels.fetch(CHANNEL_ID);
@@ -352,7 +525,6 @@ async function sendLeaderboard() {
   }
 }
 
-// -------------------- Logging Function --------------------
 async function logAction(embed) {
   try {
     if (LOGS_CHANNEL_ID) {
@@ -366,7 +538,6 @@ async function logAction(embed) {
   }
 }
 
-// -------------------- Cooldown System --------------------
 function checkCooldown(userId, commandName) {
   const key = `${userId}-${commandName}`;
   const now = Date.now();
@@ -805,349 +976,7 @@ cron.schedule("*/5 * * * *", () => {
   console.log("💾 Periodic data save completed");
 });
 
-// -------------------- Express Server with Dashboard API --------------------
-const app = express();
-app.use(express.json());
-app.use(express.static('public'));
-
-// Dashboard Authentication (Simple)
-
-
-function requireAuth(req, res, next) {
-  const auth = req.headers.authorization;
-  
-  if (auth === `Bearer ${DASHBOARD_PASSWORD}`) {
-    next();
-  } else {
-    res.status(401).json({ error: 'Authentication required' });
-  }
-}
-
-// Main Routes
-app.get("/", (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head><title>Discord Bot Dashboard</title></head>
-    <body style="font-family: Arial; padding: 20px; background: #f0f0f0;">
-      <h1>🤖 Discord Bot Dashboard</h1>
-      <p>Bot Status: <span style="color: ${client.isReady() ? 'green' : 'red'};">${client.isReady() ? '✅ Online' : '❌ Offline'}</span></p>
-      <p>Access the full dashboard: <a href="/dashboard">Dashboard</a></p>
-      <h3>API Endpoints:</h3>
-      <ul>
-        <li><a href="/api/status">/api/status</a> - Bot status</li>
-        <li><a href="/api/leaderboard">/api/leaderboard</a> - Current leaderboard</li>
-        <li><a href="/health">/health</a> - Health check</li>
-      </ul>
-      <p><strong>Note:</strong> Save the dashboard HTML from the artifact as <code>public/index.html</code> to access the full dashboard.</p>
-    </body>
-    </html>
-  `);
-});
-
-app.get("/dashboard", (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// API Routes
-app.get("/api/status", (req, res) => {
-  res.json({
-    online: client.isReady(),
-    servers: client.guilds.cache.size,
-    users: Object.keys(leaderboard).length,
-    messages: Object.values(leaderboard).reduce((a, b) => a + b, 0),
-    uptime: process.uptime(),
-    botTag: client.user ? client.user.tag : "Unknown",
-    mutedUsers: mutedUserRoles.size
-  });
-});
-
-app.get("/api/leaderboard", (req, res) => {
-  res.json(leaderboard);
-});
-
-app.post("/api/test-leaderboard", requireAuth, async (req, res) => {
-  try {
-    await sendLeaderboard();
-    res.json({ success: true, message: "Leaderboard sent successfully" });
-  } catch (error) {
-    console.error("API test leaderboard error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post("/api/reset-leaderboard", requireAuth, async (req, res) => {
-  try {
-    leaderboard = {};
-    saveData(true);
-    res.json({ success: true, message: "Leaderboard reset successfully" });
-  } catch (error) {
-    console.error("API reset leaderboard error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post("/api/announcement", requireAuth, async (req, res) => {
-  try {
-    const { channel, message } = req.body;
-    
-    let channelId;
-    switch (channel) {
-      case 'leaderboard':
-        channelId = CHANNEL_ID;
-        break;
-      case 'suggestions':
-        channelId = SUGGESTIONS_CHANNEL_ID;
-        break;
-      case 'logs':
-        channelId = LOGS_CHANNEL_ID;
-        break;
-      default:
-        channelId = CHANNEL_ID;
-    }
-
-    const discordChannel = await client.channels.fetch(channelId);
-    if (!discordChannel) {
-      throw new Error("Channel not found");
-    }
-
-    const embed = new EmbedBuilder()
-      .setTitle("📢 Dashboard Announcement")
-      .setDescription(message)
-      .setColor("Blue")
-      .setTimestamp()
-      .setFooter({ text: "Sent via Web Dashboard" });
-
-    await discordChannel.send({ embeds: [embed] });
-    res.json({ success: true, message: "Announcement sent successfully" });
-  } catch (error) {
-    console.error("API announcement error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.get("/api/logs", (req, res) => {
-  // Return basic logs - in production, you'd store these in a database
-  res.json([
-    { time: new Date().toISOString(), message: "✅ Bot started successfully" },
-    { time: new Date(Date.now() - 300000).toISOString(), message: `📊 Loaded leaderboard data (${Object.keys(leaderboard).length} users)` },
-    { time: new Date(Date.now() - 600000).toISOString(), message: `🔄 Bot uptime: ${Math.floor(process.uptime() / 60)} minutes` }
-  ]);
-});
-
-// Moderation API Endpoints
-app.post("/api/moderation/kick", requireAuth, async (req, res) => {
-  try {
-    const { userId, reason } = req.body;
-    
-    const guild = client.guilds.cache.first();
-    if (!guild) throw new Error("Guild not found");
-    
-    const member = await guild.members.fetch(userId);
-    if (!member) throw new Error("Member not found");
-    
-    await member.kick(reason || "Kicked via dashboard");
-    res.json({ success: true, message: "User kicked successfully" });
-  } catch (error) {
-    console.error("API kick error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post("/api/moderation/ban", requireAuth, async (req, res) => {
-  try {
-    const { userId, reason } = req.body;
-    
-    const guild = client.guilds.cache.first();
-    if (!guild) throw new Error("Guild not found");
-    
-    const member = await guild.members.fetch(userId);
-    if (!member) throw new Error("Member not found");
-    
-    await member.ban({ reason: reason || "Banned via dashboard" });
-    res.json({ success: true, message: "User banned successfully" });
-  } catch (error) {
-    console.error("API ban error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post("/api/moderation/unban", requireAuth, async (req, res) => {
-  try {
-    const { userId } = req.body;
-    
-    const guild = client.guilds.cache.first();
-    if (!guild) throw new Error("Guild not found");
-    
-    await guild.members.unban(userId);
-    res.json({ success: true, message: "User unbanned successfully" });
-  } catch (error) {
-    console.error("API unban error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post("/api/moderation/timeout", requireAuth, async (req, res) => {
-  try {
-    const { userId, duration, reason } = req.body;
-    
-    const guild = client.guilds.cache.first();
-    if (!guild) throw new Error("Guild not found");
-    
-    const member = await guild.members.fetch(userId);
-    if (!member) throw new Error("Member not found");
-    
-    await member.timeout((duration || 10) * 60 * 1000, reason || "Timed out via dashboard");
-    res.json({ success: true, message: "User timed out successfully" });
-  } catch (error) {
-    console.error("API timeout error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post("/api/moderation/untimeout", requireAuth, async (req, res) => {
-  try {
-    const { userId } = req.body;
-    
-    const guild = client.guilds.cache.first();
-    if (!guild) throw new Error("Guild not found");
-    
-    const member = await guild.members.fetch(userId);
-    if (!member) throw new Error("Member not found");
-    
-    await member.timeout(null);
-    res.json({ success: true, message: "Timeout removed successfully" });
-  } catch (error) {
-    console.error("API untimeout error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post("/api/moderation/mute", requireAuth, async (req, res) => {
-  try {
-    const { userId, reason } = req.body;
-    
-    const guild = client.guilds.cache.first();
-    if (!guild) throw new Error("Guild not found");
-    
-    const member = await guild.members.fetch(userId);
-    if (!member) throw new Error("Member not found");
-    
-    if (mutedUserRoles.has(userId)) {
-      throw new Error("User is already muted");
-    }
-    
-    let muteRole = guild.roles.cache.find((r) => r.name === "Muted");
-    
-    if (!muteRole) {
-      muteRole = await guild.roles.create({
-        name: "Muted",
-        color: "Grey",
-        permissions: [],
-      });
-      
-      const channels = guild.channels.cache;
-      for (const [, channel] of channels) {
-        try {
-          await channel.permissionOverwrites.edit(muteRole, {
-            SendMessages: false,
-            Speak: false,
-            AddReactions: false,
-          });
-        } catch (err) {
-          console.error(`Failed to set permissions for channel ${channel.name}:`, err);
-        }
-      }
-    }
-    
-    const userRoles = member.roles.cache
-      .filter(role => role.id !== guild.id)
-      .map(role => role.id);
-    
-    mutedUserRoles.set(userId, userRoles);
-    await member.roles.set([muteRole.id]);
-    
-    res.json({ success: true, message: "User muted successfully", rolesRemoved: userRoles.length });
-  } catch (error) {
-    console.error("API mute error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post("/api/moderation/unmute", requireAuth, async (req, res) => {
-  try {
-    const { userId } = req.body;
-    
-    const guild = client.guilds.cache.first();
-    if (!guild) throw new Error("Guild not found");
-    
-    const member = await guild.members.fetch(userId);
-    if (!member) throw new Error("Member not found");
-    
-    if (!mutedUserRoles.has(userId)) {
-      throw new Error("User wasn't muted with role storage system");
-    }
-    
-    const storedRoles = mutedUserRoles.get(userId);
-    const muteRole = guild.roles.cache.find((r) => r.name === "Muted");
-    
-    const validRoles = storedRoles.filter(roleId => {
-      const role = guild.roles.cache.get(roleId);
-      return role && (!muteRole || role.id !== muteRole.id);
-    });
-    
-    await member.roles.set(validRoles);
-    mutedUserRoles.delete(userId);
-    
-    res.json({ success: true, message: "User unmuted successfully", rolesRestored: validRoles.length });
-  } catch (error) {
-    console.error("API unmute error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post("/api/moderation/clear", requireAuth, async (req, res) => {
-  try {
-    const { channelId, amount } = req.body;
-    
-    const channel = await client.channels.fetch(channelId);
-    if (!channel) throw new Error("Channel not found");
-    
-    if (amount < 1 || amount > 100) {
-      throw new Error("Amount must be between 1 and 100");
-    }
-    
-    await channel.bulkDelete(amount, true);
-    res.json({ success: true, message: `Deleted ${amount} messages` });
-  } catch (error) {
-    console.error("API clear error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.get("/health", (req, res) => {
-  res.json({ 
-    status: "healthy", 
-    uptime: process.uptime(),
-    users: Object.keys(leaderboard).length,
-    botOnline: client.isReady(),
-    memory: process.memoryUsage()
-  });
-});
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error("Express error:", error);
-  res.status(500).json({ success: false, error: "Internal server error" });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🌐 Dashboard server running on port ${PORT}`);
-  console.log(`📊 Access dashboard at: http://localhost:${PORT}/dashboard`);
-});
-
-// -------------------- Ready Event --------------------
+// -------------------- Ready & Error Events --------------------
 client.once("ready", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   console.log(`🔗 Bot is in ${client.guilds.cache.size} server(s)`);
@@ -1155,7 +984,6 @@ client.once("ready", () => {
   console.log("🚀 Bot is fully ready!");
 });
 
-// -------------------- Error Handling --------------------
 client.on("error", (error) => {
   console.error("❌ Discord client error:", error);
 });
