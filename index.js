@@ -1,4 +1,197 @@
-import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
+// Dashboard Authentication (for admin endpoints only)
+const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'admin123';
+
+function requireAuth(req, res, next) {
+  const auth = req.headers.authorization;
+  
+  if (auth === `Bearer ${DASHBOARD_PASSWORD}`) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Authentication required' });
+  }
+}
+
+// Main Routes
+app.get("/", (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head><title>Server Stats Dashboard</title></head>
+    <body style="font-family: Arial; padding: 20px; background: #f0f0f0;">
+      <h1>🤖 Server Stats Dashboard</h1>
+      <p>Bot Status: <span style="color: ${client.isReady() ? 'green' : 'red'};">${client.isReady() ? '✅ Online' : '❌ Offline'}</span></p>
+      <p>Access the dashboard: <a href="/dashboard">Dashboard</a></p>
+    </body>
+    </html>
+  `);
+});
+
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Public API Routes (no auth needed for stats viewing)
+app.get("/api/status", (req, res) => {
+  const guild = client.guilds.cache.first();
+  res.json({
+    online: client.isReady(),
+    members: guild ? guild.memberCount : 0,
+    users: Object.keys(leaderboard).length,
+    messages: Object.values(leaderboard).reduce((a, b) => a + b, 0),
+    uptime: process.uptime(),
+    botTag: client.user ? client.user.tag : "Unknown"
+  });
+});
+
+app.get("/api/leaderboard", (req, res) => {
+  res.json(leaderboard);
+});
+
+app.get("/api/members", async (req, res) => {
+  try {
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    await guild.members.fetch();
+    
+    const members = guild.members.cache.map(member => ({
+      id: member.user.id,
+      username: member.user.username,
+      discriminator: member.user.discriminator,
+      bot: member.user.bot,
+      joinedAt: member.joinedAt
+    }));
+    
+    res.json(members);
+  } catch (error) {
+    console.error("API members error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Protected admin endpoints (keep authentication)
+app.post("/api/test-leaderboard", requireAuth, async (req, res) => {
+  try {
+    await sendLeaderboard();
+    res.json({ success: true, message: "Leaderboard sent successfully" });
+  } catch (error) {
+    console.error("API test leaderboard error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/reset-leaderboard", requireAuth, async (req, res) => {
+  try {
+    leaderboard = {};
+    saveData(true);
+    res.json({ success: true, message: "Leaderboard reset successfully" });
+  } catch (error) {
+    console.error("API reset leaderboard error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/announcement", requireAuth, async (req, res) => {
+  try {
+    const { channel, message } = req.body;
+    
+    let channelId;
+    switch (channel) {
+      case 'leaderboard':
+        channelId = CHANNEL_ID;
+        break;
+      case 'suggestions':
+        channelId = SUGGESTIONS_CHANNEL_ID;
+        break;
+      case 'logs':
+        channelId = LOGS_CHANNEL_ID;
+        break;
+      default:
+        channelId = CHANNEL_ID;
+    }
+
+    const discordChannel = await client.channels.fetch(channelId);
+    if (!discordChannel) {
+      throw new Error("Channel not found");
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle("📢 Dashboard Announcement")
+      .setDescription(message)
+      .setColor("Blue")
+      .setTimestamp()
+      .setFooter({ text: "Sent via Web Dashboard" });
+
+    await discordChannel.send({ embeds: [embed] });
+    res.json({ success: true, message: "Announcement sent successfully" });
+  } catch (error) {
+    console.error("API announcement error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Members endpoint
+app.get("/api/members", requireAuth, async (req, res) => {
+  try {
+    const guild = client.guilds.cache.first();
+    if (!guild) throw new Error("Guild not found");
+    
+    await guild.members.fetch();
+    
+    const members = guild.members.cache.map(member => ({
+      id: member.user.id,
+      username: member.user.username,
+      discriminator: member.user.discriminator,
+      bot: member.user.bot,
+      joinedAt: member.joinedAt
+    }));
+    
+    res.json(members);
+  } catch (error) {
+    console.error("API members error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Main Routes
+app.get("/", (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head><title>Discord Bot Dashboard</title></head>
+    <body style="font-family: Arial; padding: 20px; background: #f0f0f0;">
+      <h1>🤖 Discord Bot Dashboard</h1>
+      <p>Bot Status: <span style="color: ${client.isReady() ? 'green' : 'red'};">${client.isReady() ? '✅ Online' : '❌ Offline'}</span></p>
+      <p>Access the full dashboard: <a href="/dashboard">Dashboard</a></p>
+      <h3>API Endpoints:</h3>
+      <ul>
+        <li><a href="/api/status">/api/status</a> - Bot status</li>
+        <li><a href="/api/leaderboard">/api/leaderboard</a> - Current leaderboard</li>
+        <li><a href="/health">/health</a> - Health check</li>
+      </ul>
+      <p><strong>Note:</strong> Save the dashboard HTML from the artifact as <code>public/index.html</code> to access the full dashboard.</p>
+    </body>
+    </html>
+  `);
+});
+
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// API Routes
+app.get("/api/status", requireAuth, (req, res) => {
+  const guild = client.guilds.cache.first();
+  res.json({
+    online: client.isReady(),
+    members: guild ? guild.memberCount : 0,
+    users: Object.keys(leaderboard).length,
+    messages: Object.values(leaderboard).reduce((a, b) => a + b, 0),
+    uptime: process.uptime(),
+    botTag: client.user ? client.user.tag : "Unknown",
+    mutedUsers: mutedUserRoles.size
+  });
+});import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
 import fs from "fs";
 import express from "express";
 import dotenv from "dotenv";
@@ -618,7 +811,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // Dashboard Authentication (Simple)
-const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'admin123';
+
 
 function requireAuth(req, res, next) {
   const auth = req.headers.authorization;
