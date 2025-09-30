@@ -1,4 +1,4 @@
-// Dashboard Authentication (Simple)
+import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
 import fs from "fs";
 import express from "express";
 import dotenv from "dotenv";
